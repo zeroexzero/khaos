@@ -1,0 +1,36 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Utilities.pretty").expect("list to brackets").is = function(assert)
+    assert.equals(Utilities.pretty([]), "{" + Constants.EOL + "}" + Constants.EOL)
+end function
+
+test("Utilities.pretty").expect("map to brackets").is = function(assert)
+    assert.equals(Utilities.pretty({}), "{" + Constants.EOL + "}" + Constants.EOL)
+end function
+
+test("Utilities.pretty").expect("list nesting formats correctly").is = function(assert)
+    input = [[ "i0e0", "i0e1"], ["i0e0"]]
+    expected = "{" + Constants.EOL + "  0: list = {" + Constants.EOL + "    0: string = ""i0e0""" + Constants.EOL + "    1: string = ""i0e1""" + Constants.EOL + "  }" + Constants.EOL + "  1: list = {" + Constants.EOL + "    0: string = ""i0e0""" + Constants.EOL + "  }" + Constants.EOL + "}" + Constants.EOL
+    assert.equals(Utilities.pretty(input), expected)
+end function
+
+test("Utilities.pretty").expect("map nesting formats correctly").is = function(assert)
+    test_fnc = function()
+
+    end function
+    input = {
+        "i0": {
+            "e0": 1,
+            "e1": [],
+        },
+        "i1": {
+            "e0": @test_fnc,
+        },
+    }
+    expected = "{" + Constants.EOL + "  i0: map = {" + Constants.EOL + "    e0: number = 1" + Constants.EOL + "    e1: list = {" + Constants.EOL + "    }" + Constants.EOL + "  }" + Constants.EOL + "  i1: map = {" + Constants.EOL + "    e0: function = FUNCTION()" + Constants.EOL + "  }" + Constants.EOL + "}" + Constants.EOL
+    assert.equals(Utilities.pretty(input), expected)
+end function
+
+test()

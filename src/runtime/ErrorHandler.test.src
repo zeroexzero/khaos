@@ -1,0 +1,82 @@
+// Original author: 0x0
+// Imported & modified from source at: https://github.com/zeroexzero/0x0Test
+
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("ErrorHandler").setup = function()
+    super.setup()
+
+    // Mock exit
+    self.did_exit = false
+    self.original_exit = @exit
+    globals["exit"] = function
+        test("ErrorHandler").did_exit = true
+    end function
+
+    // Mock print
+    self.original_print = @print
+    self.print_count = 0
+    mock_print = function(value = "", replace = false)
+        test("ErrorHandler").print_count = test("ErrorHandler").print_count + 1
+    end function
+    Io.override(@mock_print)
+
+    // Cache instantiation
+    self.error_cache = LRUCache.New(10)
+    self.error_handler = ErrorHandler.New()
+
+    // Catch stack-trace generation
+    self.tried_to_crash_for_stacktrace = false
+    self.original_null = Constants.NULL
+    Constants.NULL = {}
+    Constants.NULL.happiness = function()
+        test("ErrorHandler").tried_to_crash_for_stacktrace = true
+    end function
+end function
+
+test("ErrorHandler").teardown = function()
+    Constants.NULL = self.original_null
+    globals.remove("exit")
+    super.teardown()
+end function
+
+test("ErrorHandler").expect("Handles no input as fatal error").is = function(assert)
+    self = test("ErrorHandler")
+    self.error_handler.handle()
+    assert.equals(self.tried_to_crash_for_stacktrace, true)
+    assert.equals(self.did_exit, true)
+end function
+
+test("ErrorHandler").expect("Handles invalid input as fatal error").is = function(assert)
+    self = test("ErrorHandler")
+    self.error_handler.handle("", self.error_cache)
+    assert.equals(self.tried_to_crash_for_stacktrace, true)
+    assert.equals(self.did_exit, true)
+    assert.equals(self.error_cache.cache[0].is_fatal, true)
+    assert.equals(self.error_cache.cache[0].type, "fatal_error")
+    assert.equals(self.error_cache.cache[0].message, "Error: threw non-error")
+end function
+
+test("ErrorHandler").expect("Handles fatal error as fatal error").is = function(assert)
+    self = test("ErrorHandler")
+    self.error_handler.handle(Error.fatal("Test error"), self.error_cache)
+    assert.equals(self.tried_to_crash_for_stacktrace, true)
+    assert.equals(self.did_exit, true)
+    assert.equals(self.error_cache.cache[0].is_fatal, true)
+    assert.equals(self.error_cache.cache[0].type, "fatal_error")
+    assert.equals(self.error_cache.cache[0].message, "Test error")
+end function
+
+test("ErrorHandler").expect("Handles non-fatal error as non-fatal error").is = function(assert)
+    self = test("ErrorHandler")
+    self.error_handler.handle(Error.nonfatal("Test error"), self.error_cache)
+    assert.equals(self.tried_to_crash_for_stacktrace, false)
+    assert.equals(self.did_exit, false)
+    assert.equals(self.error_cache.cache[0].is_fatal, false)
+    assert.equals(self.error_cache.cache[0].type, "nonfatal_error")
+    assert.equals(self.error_cache.cache[0].message, "Test error")
+end function
+
+test()

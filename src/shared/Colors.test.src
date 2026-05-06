@@ -1,0 +1,15 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Colors").expect("Colors return what they should be").is = function(assert)
+    assert.equals(Colors.black("foobar"), "<color=black>foobar</color>")
+    assert.equals(Colors.blue("foobar"), "<color=blue>foobar</color>")
+    assert.equals(Colors.green("foobar"), "<color=green>foobar</color>")
+    assert.equals(Colors.orange("foobar"), "<color=orange>foobar</color>")
+    assert.equals(Colors.red("foobar"), "<color=red>foobar</color>")
+    assert.equals(Colors.white("foobar"), "<color=white>foobar</color>")
+    assert.equals(Colors.yellow("foobar"), "<color=yellow>foobar</color>")
+end function
+
+test()

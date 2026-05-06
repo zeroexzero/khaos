@@ -1,0 +1,49 @@
+// Original author: 0x0
+// Imported & modified from source at: https://github.com/zeroexzero/0x0Test
+
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Runtime").setup = function()
+    super.setup()
+
+    // Mock error_handler
+    self.original_error_handler = Runtime.error_handler
+    self.handle_calls = []
+    Runtime.error_handler = {}
+    Runtime.error_handler.handle = function(error, cache)
+        test("Runtime").handle_calls.push({"error": error, "cache": cache})
+    end function
+end function
+
+test("Runtime").teardown = function()
+    // Remove Runtime.error_handler mock
+    Runtime.error_handler = self.original_error_handler
+    super.teardown()
+end function
+
+test("Runtime").expect("Throw non-error throws a fatal error").is = function(assert)
+    Runtime.throw("foobar")
+
+    // Throwing invalid ALSO throws fatal, 2 total throw
+    assert.equals(test("Runtime").handle_calls.len(), 2)
+
+    // Validate top-of-stack error is fatal
+    assert.equals(test("Runtime").handle_calls[0].error.is_fatal, true)
+    assert.equals(test("Runtime").handle_calls[0].error.type, "fatal_error")
+    assert.equals(test("Runtime").handle_calls[0].error.message, "Cannot throw non-error")
+end function
+
+test("Runtime").expect("Throw non-fatal error doesn't exit").is = function(assert)
+    Runtime.throw(Error.nonfatal("foobar"))
+    // Only one error has been thrown
+    assert.equals(test("Runtime").handle_calls.len(), 1)
+
+    // Validate top-of-stack error is non-fatal
+    assert.equals(test("Runtime").handle_calls[0].error.is_fatal, false)
+    assert.equals(test("Runtime").handle_calls[0].error.type, "nonfatal_error")
+    assert.equals(test("Runtime").handle_calls[0].error.message, "foobar")
+end function
+
+test()

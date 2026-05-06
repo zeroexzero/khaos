@@ -1,0 +1,124 @@
+/*
+ * Dependencies:
+ *   - ../runtime/Io.src
+ *   - ./Colors.src
+ */
+
+// @type LogLevel
+// @property {string} level_text
+// @property {number} level_int
+// @property {function} DEBUG
+// @property {function} INFO
+// @property {function} WARN
+// @property {function} ERROR
+LogLevel = {
+    "level_text": "DEBUG",
+    "level_int": 0,
+}
+LogLevel.generate = function(level_text, level_int)
+    level = new LogLevel
+    level.level_text = level_text
+    level.level_int = level_int
+    return level
+end function
+LogLevel.DEBUG = LogLevel.generate("DEBUG", 0)
+LogLevel.INFO = LogLevel.generate("INFO", 1)
+LogLevel.WARN = LogLevel.generate("WARN", 2)
+LogLevel.ERROR = LogLevel.generate("ERROR", 3)
+LogLevel.NONE = LogLevel.generate("NONE", 99)
+
+// @type Logger
+// @property {LogLevel} level
+// @property {Io} level
+Logger = {
+    "level": LogLevel.INFO,
+    "output_stream": Io,
+}
+
+// @description Set the logger's default output stream.
+// @example Logger.set_output_stream(Io)
+// @param {Io} output_stream - The output stream to log to.
+// @return Logger
+Logger.set_output_stream = function(output_stream)
+    self.debug("Changing output stream")
+    self.output_stream = output_stream
+    return self
+end function
+
+// @description Format the given input for logging. Prepends level, time, etc.
+// @example Io.print(Logger.format_str_for_log("Hello world"))
+// @param {Io} input - The string to format.
+// @param {LogLevel} log_level - The log level to prepend output with
+// @return {string}
+Logger.format_str_for_log = function(input, log_level)
+    formatted = str(time() * 1000) + "ms: ["
+    if log_level.level_int == LogLevel.DEBUG.level_int then
+        formatted = formatted + Colors.blue(log_level.level_text)
+    else if log_level.level_int == LogLevel.WARN.level_int then
+        formatted = formatted + Colors.yellow(log_level.level_text)
+    else if log_level.level_int == LogLevel.ERROR.level_int then
+        formatted = formatted + Colors.red(log_level.level_text)
+    else
+        formatted = formatted + log_level.level_text
+    end if
+    formatted = formatted + "] "
+    return formatted + input
+end function
+
+// @description Set the logger's level. Any log entry below the level won't print.
+// @example Logger.set_level(LogLevel.WARN)
+// @param {LogLevel} level - The level to set logging to.
+// @return Logger
+Logger.set_level = function(level)
+    self.debug("Changing log level from " + self.level.level_text + " to " + level.level_text)
+    self.level = level
+    return self
+end function
+
+// @description Log input string to Io if allowed as the given log level.
+// @example Logger.debug("Hello world")
+// @param {string} input - The string to log
+// @param {LogLevel} log_level - The log level to consider
+// @return {undefined}
+Logger.log_line = function(input, log_level)
+    if self.level.level_int == LogLevel.NONE.level_int then return
+    if self.level.level_int <= log_level.level_int then
+        if log_level.level_int == LogLevel.ERROR.level_int then
+            self.output_stream.error(self.format_str_for_log(input, log_level))
+        else
+            self.output_stream.print(self.format_str_for_log(input, log_level))
+        end if
+    end if
+end function
+
+// @description Log input string to Io if allowed by set log level.
+// @example Logger.debug("Hello world")
+// @param {string} input - The string to log
+// @return {undefined}
+Logger.debug = function(input)
+    self.log_line(input, LogLevel.DEBUG)
+end function
+
+// @description Log input string to Io if allowed by set log level.
+// @example Logger.info("Hello world")
+// @param {string} input - The string to log
+// @return {undefined}
+Logger.info = function(input)
+    self.log_line(input, LogLevel.INFO)
+end function
+
+// @description Log input string to Io if allowed by set log level.
+// @example Logger.warn("Hello world")
+// @param {string} input - The string to log
+// @return {undefined}
+Logger.warn = function(input)
+    self.log_line(input, LogLevel.WARN)
+end function
+
+// @description Log input string to Io if allowed by set log level.
+// @example Logger.error("Hello world")
+// @param {string} input - The string to log
+// @return {undefined}
+Logger.error = function(input)
+    self.log_line(input, LogLevel.ERROR)
+end function

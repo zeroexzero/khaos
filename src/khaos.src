@@ -1,0 +1,3 @@
+import_code("./kernel/include.src")
+
+Kernel.boot()

@@ -1,0 +1,49 @@
+// Original author: 0x0
+// Imported & modified from source at: https://github.com/zeroexzero/0x0Test
+
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Error").expect("Error.fatal() returns a fatal error").is = function(assert)
+    error = Error.fatal("Test error")
+    assert.equals(error.is_fatal, true)
+    assert.equals(error.type, "fatal_error")
+    assert.equals(error.message, "Test error")
+end function
+
+test("Error").expect("Error.nonfatal() returns a non-fatal error").is = function(assert)
+    error = Error.nonfatal("Test error")
+    assert.equals(error.is_fatal, false)
+    assert.equals(error.type, "nonfatal_error")
+    assert.equals(error.message, "Test error")
+end function
+
+test("Error").expect("Error.new() generates valid errors").is = function(assert)
+    invalid_error = Error.New()
+    assert.equals(invalid_error.is_fatal, true)
+    assert.equals(invalid_error.type, "INVALID_TYPE")
+    assert.equals(invalid_error.message, "INVALID_MESSAGE")
+
+    invalid_error = Error.New("asd", true, true)
+    assert.equals(invalid_error.is_fatal, true)
+    assert.equals(invalid_error.type, "INVALID_TYPE")
+    assert.equals(invalid_error.message, "INVALID_MESSAGE")
+
+    invalid_error = Error.New(false, true, true)
+    assert.equals(invalid_error.is_fatal, false)
+    assert.equals(invalid_error.type, "INVALID_TYPE")
+    assert.equals(invalid_error.message, "INVALID_MESSAGE")
+
+    invalid_error = Error.New(false, "test_type", "test_message")
+    assert.equals(invalid_error.is_fatal, false)
+    assert.equals(invalid_error.type, "test_type")
+    assert.equals(invalid_error.message, "test_message")
+
+    invalid_error = Error.New(true, "test_type", "test_message")
+    assert.equals(invalid_error.is_fatal, true)
+    assert.equals(invalid_error.type, "test_type")
+    assert.equals(invalid_error.message, "test_message")
+end function
+
+test()

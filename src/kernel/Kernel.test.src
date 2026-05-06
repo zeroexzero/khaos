@@ -1,0 +1,57 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Kernel").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_init = Runtime["init"]
+    self.called_runtime_init = false
+    Runtime.init = function()
+        test("Kernel").called_runtime_init = true
+    end function
+
+    // Mock Io init
+    self.original_io_init = Io["init"]
+    self.called_io_init = false
+    Io.init = function()
+        test("Kernel").called_io_init = true
+    end function
+
+    // Mock Logger set_output_stream
+    self.original_logger_set_output_stream = Logger["set_output_stream"]
+    self.called_logger_set_output_stream = false
+    Logger.set_output_stream = function(Io)
+        test("Kernel").called_logger_set_output_stream = true
+    end function
+
+    // Mock Logger debug
+    self.original_logger_debug = Logger["debug"]
+    self.called_logger_debug_with = ""
+    Logger.debug = function(input)
+        test("Kernel").called_logger_debug_with = input
+    end function
+end function
+
+test("Kernel").teardown = function()
+    // Restore mocks
+    Runtime.init = self["original_runtime_init"]
+    Io.init = self["original_io_init"]
+    super.teardown()
+end function
+
+test("Kernel").expect("Kernel.boot starts & configures runtime, io, and logger").is = function(assert)
+    self = test("Kernel")
+    assert.is_false(self.called_runtime_init)
+    assert.is_false(self.called_io_init)
+    assert.is_false(self.called_logger_set_output_stream)
+    assert.equals(self.called_logger_debug_with, "")
+    Kernel.boot()
+    assert.is_true(self.called_runtime_init)
+    assert.is_true(self.called_io_init)
+    assert.is_true(self.called_logger_set_output_stream)
+    assert.equals(self.called_logger_debug_with, "We've booted")
+end function
+
+test()

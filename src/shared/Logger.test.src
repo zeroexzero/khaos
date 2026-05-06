@@ -1,0 +1,86 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Logger").setup = function()
+    super.setup()
+    log_lines = []
+    error_lines = []
+    self.output_stream = {}
+    self.output_stream.print = function(input)
+        log_lines.push(input)
+    end function
+    self.output_stream.error = function(input)
+        error_lines.push(input)
+    end function
+    self.log_lines = log_lines
+    self.error_lines = error_lines
+    Logger.set_output_stream(self.output_stream)
+    Logger.set_level(LogLevel.DEBUG)
+end function
+
+test("Logger").teardown = function()
+    while self.log_lines.pop()
+        // Just empty
+    end while
+    while self.error_lines.pop()
+        // Just empty
+    end while
+    super.teardown()
+end function
+
+test("Logger").expect("log at correct levels").is = function(assert)
+    self = test("Logger")
+    Logger.debug("foobar")          // log_lines: 1, error_lines: 0
+    Logger.info("foobar")           // log_lines: 2, error_lines: 0
+    Logger.warn("foobar")           // log_lines: 3, error_lines: 0
+    Logger.error("foobar")          // log_lines: 3, error_lines: 1
+    Logger.set_level(LogLevel.INFO) // log_lines: 4, error_lines: 1
+    Logger.debug("foobar")          // log_lines: 4, error_lines: 1
+    Logger.info("foobar")           // log_lines: 5, error_lines: 1
+    Logger.warn("foobar")           // log_lines: 6, error_lines: 1
+    Logger.error("foobar")          // log_lines: 6, error_lines: 2
+    Logger.set_level(LogLevel.WARN)
+    Logger.debug("foobar")          // log_lines: 6, error_lines: 2
+    Logger.info("foobar")           // log_lines: 6, error_lines: 2
+    Logger.warn("foobar")           // log_lines: 7, error_lines: 2
+    Logger.error("foobar")          // log_lines: 7, error_lines: 3
+    Logger.set_level(LogLevel.ERROR)
+    Logger.debug("foobar")          // log_lines: 7, error_lines: 4
+    Logger.info("foobar")           // log_lines: 7, error_lines: 4
+    Logger.warn("foobar")           // log_lines: 7, error_lines: 4
+    Logger.error("foobar")          // log_lines: 7, error_lines: 4
+    Logger.set_level(LogLevel.NONE)
+    Logger.debug("foobar")          // log_lines: 7, error_lines: 4
+    Logger.info("foobar")           // log_lines: 7, error_lines: 4
+    Logger.warn("foobar")           // log_lines: 7, error_lines: 4
+    Logger.error("foobar")          // log_lines: 7, error_lines: 4
+    assert.equals(self.log_lines.len(), 7)
+    assert.equals(self.error_lines.len(), 4)
+end function
+
+test("Logger").expect("debug colored blue").is = function(assert)
+    self = test("Logger")
+    input = "foobar"
+    expected = "[" + Colors.blue("DEBUG") + "] " + input
+    Logger.debug(input)
+    assert.equals(self.log_lines[-1][-expected.len():], expected)
+end function
+
+test("Logger").expect("warn colored yellow").is = function(assert)
+    self = test("Logger")
+    input = "foobar"
+    expected = "[" + Colors.yellow("WARN") + "] " + input
+    Logger.warn(input)
+    assert.equals(self.log_lines[-1][-expected.len():], expected)
+end function
+
+test("Logger").expect("error colored red").is = function(assert)
+    self = test("Logger")
+    input = "foobar"
+    expected = "[" + Colors.red("ERROR") + "] " + input
+    Logger.error(input)
+    assert.equals(self.error_lines[-1][-expected.len():], expected)
+end function
+
+test()

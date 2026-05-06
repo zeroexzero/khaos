@@ -1,0 +1,16 @@
+// @type Kernel
+Kernel = {}
+
+// @description Boot the kernel, this stitches everything together.
+// @example Kernel.boot()
+// @return {undefined}
+Kernel.boot = function()
+    Runtime.init()
+    Io.init()
+
+    // Unnecessary to set output stream to Io as it currently defaults to that
+    // In the future, might want to set output stream to some file handle.
+    Logger.set_output_stream(Io)
+
+    Logger.debug("We've booted")
+end function
