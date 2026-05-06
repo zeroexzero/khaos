@@ -1,0 +1,85 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+
+test("PrimitiveSerializer").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw = false
+    Runtime.throw = function(error)
+        test("PrimitiveSerializer").called_runtime_throw = true
+    end function
+end function
+
+test("PrimitiveSerializer").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("PrimitiveSerializer").expect("validate returns false if recursion").is = function(assert)
+    test_map = {}
+    test_map.foobar = test_map
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+
+    test_map = {}
+    test_map.some_list = []
+    test_map.some_list.push(test_map)
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+end function
+
+test("PrimitiveSerializer").expect("validate returns false if contains non-primatives").is = function(assert)
+    test_map = {}
+    test_map.foobar = function()
+        // Do nothing
+    end function
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+
+    test_map = {"layer1": {}}
+    test_map.layer1.foobar = function()
+        // Do nothing
+    end function
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+
+    test_map = {"shell": get_shell()}
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+
+    test_map = {"undefined": null}
+    assert.is_false(PrimitiveSerializer.validate(test_map))
+end function
+
+test("PrimitiveSerializer").expect("validate returns true if valid map").is = function(assert)
+    test_map = {
+        "some_list": [1, 2, 3],
+        "some_string": "foobar",
+        "some_map": {
+            "some_list": [1, 2, 3],
+            "some_string": "foobar",
+        },
+    }
+    assert.is_true(PrimitiveSerializer.validate(test_map))
+
+    // Empty map == valid
+    assert.is_true(PrimitiveSerializer.validate({}))
+end function
+
+test("PrimitiveSerializer").expect("validate throws when input is invalid").is = function(assert)
+    self = test("PrimitiveSerializer")
+    test_map = {}
+    test_map.foobar = test_map
+    PrimitiveSerializer.serialize(test_map)
+    assert.is_true(self.called_runtime_throw)
+end function
+
+test("PrimitiveSerializer").expect("validate returns true if valid map").is = function(assert)
+    self = test("PrimitiveSerializer")
+    test_map = {"some_map":{"some_string":"asdf","some_list":[{"foo":"bar"},"asd",1]},"some_number":1}
+    expected = "{""some_map"":{""some_string"":""asdf"",""some_list"":[{""foo"":""bar""},""asd"",1]},""some_number"":1}"
+    assert.equals(PrimitiveSerializer.serialize(test_map), expected)
+    assert.is_false(self.called_runtime_throw)
+end function
+
+test()

@@ -12,4 +12,5 @@ import_code("../runtime/Runtime.src")
 import_code("../shared/Logger.src")
 
 // Core code
+import_code("../serializers/PrimitiveSerializer.src")
 import_code("../kernel/Kernel.src")
