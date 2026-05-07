@@ -21,13 +21,12 @@ Runtime = {
 // @description Pass an error to the Runtime's ErrorHandler
 // @example Runtime.throw(Error.fatal("FATAL ERROR!"))
 // @param {Error} error - The Error to pass to Runtime's ErrorHandler
-// @return {undefined}
+// @return {Error|undefined}
 Runtime.throw = function(error)
     if not error isa Error then
-        ferror = Error.fatal("Cannot throw non-error")
-        Runtime.error_handler.handle(ferror, Runtime.error_cache)
+        error = Error.fatal("Cannot throw non-error")
     end if
-    Runtime.error_handler.handle(error, Runtime.error_cache)
+    return Runtime.error_handler.handle(error, Runtime.error_cache)
 end function
 
 // @description Replace Runtime's EventHandler with another.

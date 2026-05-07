@@ -3,7 +3,7 @@
 #include ./src/runtime/ErrorHandler.test.src
 #include ./src/runtime/Io.test.src
 #include ./src/runtime/Runtime.test.src
-#include ./src/serializers/PrimitiveSerializer.test.src
+#include ./src/serializers/JsonSerializer.test.src
 #include ./src/shared/Colors.test.src
 #include ./src/shared/Logger.test.src
 #include ./src/shared/Utilities.test.src

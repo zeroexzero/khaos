@@ -5,10 +5,12 @@
 // @property {number} is_fatal
 // @property {string} type
 // @property {string} message
+// @property {string} classID
 Error = {
     "is_fatal": true,
     "type": "INVALID_TYPE",
     "message": "INVALID_MESSAGE",
+    "classID": "Error",
 }
 
 // @description Instantiate a new Error object.
@@ -19,6 +21,7 @@ Error = {
 // @return {Error}
 Error.New = function(is_fatal = true, type = "INVALID_TYPE", message = "INVALID_MESSAGE")
     error = new Error
+    error.classID = "Error"
     error.is_fatal = is_fatal
     if is_fatal != false and is_fatal != true then error.is_fatal = true
 

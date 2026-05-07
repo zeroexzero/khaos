@@ -79,4 +79,13 @@ test("ErrorHandler").expect("Handles non-fatal error as non-fatal error").is = f
     assert.equals(self.error_cache.cache[0].message, "Test error")
 end function
 
+test("ErrorHandler").expect("Returns the handled error when non-fatal").is = function(assert)
+    self = test("ErrorHandler")
+    returned = self.error_handler.handle(Error.nonfatal("Test error"), self.error_cache)
+    assert.equals(typeof(returned), "Error")
+    assert.equals(returned.is_fatal, false)
+    assert.equals(returned.type, "nonfatal_error")
+    assert.equals(returned.message, "Test error")
+end function
+
 test()

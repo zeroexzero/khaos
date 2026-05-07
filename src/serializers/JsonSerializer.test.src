@@ -1,0 +1,213 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("JsonSerializer").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw_with = null
+    Runtime.throw = function(error)
+        test("JsonSerializer").called_runtime_throw_with = error
+        return error
+    end function
+end function
+
+test("JsonSerializer").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("JsonSerializer").expect("validate returns false if recursion").is = function(assert)
+    test_map = {}
+    test_map.foobar = test_map
+    assert.is_false(JsonSerializer.validate(test_map))
+
+    test_map = {}
+    test_map.some_list = []
+    test_map.some_list.push(test_map)
+    assert.is_false(JsonSerializer.validate(test_map))
+end function
+
+test("JsonSerializer").expect("validate returns false if contains non-primatives").is = function(assert)
+    test_map = {}
+    test_map.foobar = function()
+        // Do nothing
+    end function
+    assert.is_false(JsonSerializer.validate(test_map))
+
+    test_map = {"layer1": {}}
+    test_map.layer1.foobar = function()
+        // Do nothing
+    end function
+    assert.is_false(JsonSerializer.validate(test_map))
+
+    test_map = {"shell": get_shell()}
+    assert.is_false(JsonSerializer.validate(test_map))
+end function
+
+test("JsonSerializer").expect("validate returns true if valid map").is = function(assert)
+    test_map = {
+        "some_list": [1, 2, 3],
+        "some_string": "foobar",
+        "some_null": null,
+        "some_map": {
+            "some_list": [1, 2, 3],
+            "some_string": "foobar",
+            "some_null": null,
+        },
+    }
+    assert.is_true(JsonSerializer.validate(test_map))
+
+    // Empty map == valid
+    assert.is_true(JsonSerializer.validate({}))
+end function
+
+test("JsonSerializer").expect("serialize throws invalid input on infinite recursion").is = function(assert)
+    self = test("JsonSerializer")
+    test_map = {}
+    test_map.foobar = test_map
+    JsonSerializer.serialize(test_map)
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+end function
+
+test("JsonSerializer").expect("serialize can throw unexpected type error").is = function(assert)
+    self = test("JsonSerializer")
+
+    // Mock validate to simulate logic error in validate not catching invalid input
+    // due to unexpected type in input
+    original_validate = @JsonSerializer.validate
+    JsonSerializer.validate = function(input)
+        return true
+    end function
+
+    test_map = {}
+    test_map.__isa = {}
+    test_map.classID = "foobar"
+    a = JsonSerializer.serialize(test_map)
+
+    // Cleanup
+    JsonSerializer.validate = @original_validate
+
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.UnexpectedTypeError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.UnexpectedTypeError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.UnexpectedTypeError.message)
+end function
+
+test("JsonSerializer").expect("serialize can return all expected types as string").is = function(assert)
+    self = test("JsonSerializer")
+    assert.equals(JsonSerializer.serialize({}), "{}")
+    assert.equals(self.called_runtime_throw_with, null)
+
+    assert.equals(JsonSerializer.serialize([]), "[]")
+    assert.equals(self.called_runtime_throw_with, null)
+
+    assert.equals(JsonSerializer.serialize(null), "null")
+    assert.equals(self.called_runtime_throw_with, null)
+
+    assert.equals(JsonSerializer.serialize("foobar"), """foobar""")
+    assert.equals(self.called_runtime_throw_with, null)
+
+    assert.equals(JsonSerializer.serialize(1), "1")
+    assert.equals(self.called_runtime_throw_with, null)
+end function
+
+test("JsonSerializer").expect("deserialize can throw not a string").is = function(assert)
+    self = test("JsonSerializer")
+    JsonSerializer.deserialize(null)
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.NotAStringError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.NotAStringError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.NotAStringError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize(1)
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.NotAStringError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.NotAStringError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.NotAStringError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize({})
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.NotAStringError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.NotAStringError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.NotAStringError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize([])
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.NotAStringError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.NotAStringError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.NotAStringError.message)
+    self.called_runtime_throw_with = null
+
+    test_map = {}
+    test_map.__isa = {}
+    test_map.classID = "foobar"
+    JsonSerializer.deserialize(test_map)
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.NotAStringError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.NotAStringError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.NotAStringError.message)
+    self.called_runtime_throw_with = null
+end function
+
+test("JsonSerializer").expect("deserialize can throw invalid input error").is = function(assert)
+    self = test("JsonSerializer")
+    JsonSerializer.deserialize("a")
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize("{""some_key""foobar}")
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize("{""key"": ""foobar")
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+    self.called_runtime_throw_with = null
+
+    JsonSerializer.deserialize("{""foobar}")
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+    self.called_runtime_throw_with = null
+
+    result = JsonSerializer.deserialize("[foobar""]""")
+    assert.equals(self.called_runtime_throw_with.fatal, JsonSerializer.InvalidInputError.fatal)
+    assert.equals(self.called_runtime_throw_with.type, JsonSerializer.InvalidInputError.type)
+    assert.equals(self.called_runtime_throw_with.message, JsonSerializer.InvalidInputError.message)
+    self.called_runtime_throw_with = null
+end function
+
+test("JsonSerializer").expect("deserialize can return map").is = function(assert)
+    self = test("JsonSerializer")
+
+    expected_map = {}
+    expected_map.inner = {}
+    expected_map.inner.some_number = 1
+    expected_map.inner.some_null = null
+    expected_map.inner.some_string = "foob\ar"""
+    expected_map.inner.some_list = [1, 2, 3]
+    expected_map.some_number = 1
+    expected_map.some_null = null
+    expected_map.some_string = "foobar"""
+    expected_map.some_list = [1, 2, 3]
+
+    serialized = JsonSerializer.serialize(expected_map)
+    deserialized = JsonSerializer.deserialize(serialized)
+    expected = "{""inner"":{""some_number"":1,""some_null"":null,""some_string"":""foob\\ar\"""",""some_list"":[1,2,3]},""some_number"":1,""some_null"":null,""some_string"":""foobar\"""",""some_list"":[1,2,3]}"
+    assert.equals(typeof(deserialized), "map")
+    assert.equals(JsonSerializer.serialize(deserialized), expected)
+
+    deserialized = JsonSerializer.deserialize("{}")
+    assert.equals(typeof(deserialized), "map")
+    assert.equals(deserialized.indexes().len(), 0)
+end function
+
+test()

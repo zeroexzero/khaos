@@ -13,7 +13,9 @@ test("Runtime").setup = function()
     self.handle_calls = []
     Runtime.error_handler = {}
     Runtime.error_handler.handle = function(error, cache)
-        test("Runtime").handle_calls.push({"error": error, "cache": cache})
+        self = test("Runtime")
+        self.handle_calls.push({"error": error, "cache": cache})
+        return error
     end function
 end function
 
@@ -26,8 +28,8 @@ end function
 test("Runtime").expect("Throw non-error throws a fatal error").is = function(assert)
     Runtime.throw("foobar")
 
-    // Throwing invalid ALSO throws fatal, 2 total throw
-    assert.equals(test("Runtime").handle_calls.len(), 2)
+    // Throwing invalid triggers throw fatal, 1 total throw
+    assert.equals(test("Runtime").handle_calls.len(), 1)
 
     // Validate top-of-stack error is fatal
     assert.equals(test("Runtime").handle_calls[0].error.is_fatal, true)
@@ -44,6 +46,13 @@ test("Runtime").expect("Throw non-fatal error doesn't exit").is = function(asser
     assert.equals(test("Runtime").handle_calls[0].error.is_fatal, false)
     assert.equals(test("Runtime").handle_calls[0].error.type, "nonfatal_error")
     assert.equals(test("Runtime").handle_calls[0].error.message, "foobar")
+end function
+
+test("Runtime").expect("Throw returns passed non-fatal error").is = function(assert)
+    returned = Runtime.throw(Error.nonfatal("foobar"))
+    assert.equals(returned.is_fatal, false)
+    assert.equals(returned.type, "nonfatal_error")
+    assert.equals(returned.message, "foobar")
 end function
 
 test()

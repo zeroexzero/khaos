@@ -41,6 +41,9 @@ ErrorHandler.handle = function(error, error_cache = null)
         // We shouldn't actually end up here
         exit()
     end if
+
+    // Return the error passed in
+    return error
 end function
 
 // @description Instantiate a new ErrorHandler object.
