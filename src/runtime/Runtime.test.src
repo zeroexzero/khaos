@@ -55,4 +55,52 @@ test("Runtime").expect("Throw returns passed non-fatal error").is = function(ass
     assert.equals(returned.message, "foobar")
 end function
 
+test("Runtime").expect("Try can prevent fatal from exit then throw agian for exit").is = function(assert)
+    self = test("Runtime")
+    Runtime.try()
+    returned = Runtime.throw(Error.fatal("foobar"))
+    errors = Runtime.catch()
+    assert.equals(errors.len(), 1)
+    assert.equals(errors[0].is_fatal, true)
+    assert.equals(errors[0].type, "fatal_error")
+    assert.equals(errors[0].message, "foobar")
+    assert.equals(self.handle_calls.len(), 0)
+
+    // Now throw the caught error and verify the real error handler was called
+    Runtime.throw(errors[0])
+    assert.equals(self.handle_calls.len(), 1)
+end function
+
+test("Runtime").expect("Multiple try is organized correctly").is = function(assert)
+    self = test("Runtime")
+    Runtime.try()
+    // {
+        Runtime.throw(Error.fatal("outer"))
+        Runtime.try()
+        // {
+            returned = Runtime.throw(Error.fatal("inner"))
+        // }
+        errors = Runtime.catch()
+        // {
+            assert.equals(self.handle_calls.len(), 0)
+            assert.equals(errors.len(), 1)
+            assert.equals(errors[0].message, "inner")
+        // }
+    // }
+    errors = Runtime.catch()
+    // {
+        assert.equals(self.handle_calls.len(), 0)
+        assert.equals(errors.len(), 1)
+        assert.equals(errors[0].message, "outer")
+    // }
+end function
+
+test("Runtime").expect("Running catch before try throws fatal").is = function(assert)
+    self = test("Runtime")
+    errors = Runtime.catch()
+    assert.equals(self.handle_calls.len(), 1)
+    assert.equals(self.handle_calls[0].error.is_fatal, true)
+    assert.equals(self.handle_calls[0].error.message, "Cannot catch before try")
+end function
+
 test()

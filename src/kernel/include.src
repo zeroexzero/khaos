@@ -8,6 +8,7 @@ import_code("../data_structures/LRUCache.src")
 import_code("../shared/Utilities.src")
 import_code("../runtime/Io.src")
 import_code("../runtime/ErrorHandler.src")
+import_code("../runtime/TryErrorHandler.src")
 import_code("../runtime/Runtime.src")
 import_code("../shared/Logger.src")
 

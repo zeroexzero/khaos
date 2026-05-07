@@ -6,6 +6,7 @@
  *   - ../data_structures/LRUCache.src
  *   - ../runtime/Error.src
  *   - ../runtime/ErrorHandler.src
+ *   - ../runtime/TryErrorHandler.src
  *   - ../shared/Colors.src
  *   - ../shared/Constants.src
  */
@@ -16,7 +17,28 @@
 Runtime = {
     "error_handler": ErrorHandler,
     "error_cache": LRUCache,
+    "default_cache_size": 8,
+    "try_stack": []
 }
+
+// @description Add to the try stack, another error cache with a try error handler
+// @example Runtime.try()
+// @return {undefined}
+Runtime.try = function()
+    self.try_stack.push({
+        "error_handler": TryErrorHandler.New(),
+        "error_cache": LRUCache.New(self.default_cache_size),
+    })
+end function
+
+// @description Closes the try session and returns the list of captured errors
+// @example errors = Runtime.catch()
+// @return {list<Error>}
+Runtime.catch = function()
+    try_session = self.try_stack.pop()
+    if not try_session then return self.throw(Error.fatal("Cannot catch before try"))
+    return try_session.error_cache.cache
+end function
 
 // @description Pass an error to the Runtime's ErrorHandler
 // @example Runtime.throw(Error.fatal("FATAL ERROR!"))
@@ -26,7 +48,13 @@ Runtime.throw = function(error)
     if not error isa Error then
         error = Error.fatal("Cannot throw non-error")
     end if
-    return Runtime.error_handler.handle(error, Runtime.error_cache)
+    error_handler = self.error_handler
+    error_cache = self.error_cache
+    if self.try_stack.len() then
+        error_handler = self.try_stack[-1].error_handler
+        error_cache = self.try_stack[-1].error_cache
+    end if
+    return error_handler.handle(error, error_cache)
 end function
 
 // @description Replace Runtime's EventHandler with another.
@@ -47,7 +75,7 @@ end function
 // @return {undefined}
 Runtime.reset = function()
     Runtime.error_handler = ErrorHandler.New()
-    Runtime.error_cache = LRUCache.New(8)
+    Runtime.error_cache = LRUCache.New(self.default_cache_size)
 end function
 
 // @description Setup the Runtime singleton to "base" settings.
