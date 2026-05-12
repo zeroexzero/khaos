@@ -1,3 +1,10 @@
+VERSION = "0.0.1"
+
 import_code("./kernel/include.src")
 
-Kernel.boot()
+main = function()
+    Kernel.boot()
+    // TBD: Core logic below
+end function
+
+main()
