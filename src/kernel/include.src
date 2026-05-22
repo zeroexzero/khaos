@@ -1,9 +1,11 @@
 // Absolutely no dependencies, out-of-order is fine
-import_code("../shared/Constants.src")
-import_code("../shared/Colors.src")
 import_code("../runtime/Error.src")
+import_code("../shared/Colors.src")
+import_code("../shared/Constants.src")
+import_code("../shared/Functions.src")
 
 // Dependencies, dependency order
+import_code("../events/EventHandler.src")
 import_code("../data_structures/LRUCache.src")
 import_code("../shared/Utilities.src")
 import_code("../runtime/Io.src")
@@ -11,8 +13,11 @@ import_code("../runtime/ErrorHandler.src")
 import_code("../runtime/TryErrorHandler.src")
 import_code("../runtime/Runtime.src")
 import_code("../shared/Logger.src")
-
-// Core code
+import_code("../events/Message.src")
+import_code("../events/Subscriber.src")
+import_code("../events/Topic.src")
 import_code("../serializers/JsonSerializer.src")
 import_code("../serializers/jstroutJsonSerializer.src")
+
+// Core code
 import_code("../kernel/Kernel.src")

@@ -1,0 +1,82 @@
+/*
+ * Dependencies:
+ *   - ../data_structures/LRUCache.src
+ *   - ../shared/Logger.src
+ *   - ../shared/Utilities.src
+ *   - ./Message.src
+ *   - ./Subscriber.src
+ */
+
+// @type Topic
+// @property {string} classID
+// @property {string} name
+// @property {list<Subscriber>} subscribers
+// @property {LRUCache<Message>} history
+Topic = {
+    "classID": "Topic",
+    "name": "",
+    "subscribers": [],
+    "history": null,
+}
+
+// @type Error
+Topic.TopicNameIsNotStringError = Error.New(
+    false,
+    "topic_name_is_not_string",
+    "Topic name is not a string."
+)
+
+// @description Instantiate a topic.
+// @description Returns an error if the topic_name isn't a string.
+// @example t = Topic.New("foobar")
+// @param {string} topic_name
+// @return {Topic|Error}
+Topic.New = function(topic_name)
+    if typeof(@topic_name) != "string" then
+        return Runtime.throw(Topic.TopicNameIsNotStringError)
+    end if
+
+    topic = new Topic
+    topic.name = topic_name
+    topic.subscribers = []
+    topic.history = LRUCache.New(16)
+    return topic
+end function
+
+// @description Add subscriber to topic. Will receive notifications on emit.
+// @description Returns an error if the subscriber isn't a Subscriber.
+// @example t = Topic.New("foobar")
+// @example t.subscribe(Subscriber.New(@print))
+// @param {Subscriber} subscriber
+// @return {null|Error}
+Topic.subscribe = function(subscriber)
+    if not @subscriber isa Subscriber then
+        return Runtime.throw(Subscriber.NotASubscriberError)
+    end if
+
+    self.subscribers.push(subscriber)
+end function
+
+// @description Emit a message on a topic. Message propagates to all subscribers.
+// @description Returns an error if the message isn't a Message.
+// @example t = Topic.New("foobar")
+// @example t.emit(Message.New("test payload"))
+// @param {Message} message
+// @return {Topic|Error}
+Topic.emit = function(message)
+    if not @message isa Message then
+        return Runtime.throw(Message.NotAMessageError)
+    end if
+
+    for subscriber in self.subscribers
+        // We're going to absorb any errors as subscriber failure should never
+        // throw a Runtime error
+        Runtime.try()
+        subscriber.notify(message)
+        errors = Runtime.catch()
+        for error in errors
+            Logger.warn("Error notifying subscriber:")
+            Logger.warn(Utilities.pretty([error, message]))
+        end for
+    end for
+end function

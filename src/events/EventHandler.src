@@ -1,0 +1,92 @@
+/*
+ * Dependencies:
+ *   - ../runtime/Runtime.src
+ *   - ./Message.src
+ *   - ./Topic.src
+ */
+
+// @type EventHandler
+// @property {map<string, Topic>} topics
+// @property {string} classID
+EventHandler = {
+    "classID": "EventHandler",
+    "topics": {},
+}
+
+// @type Error
+EventHandler.TopicExistsError = Error.New(
+    false,
+    "topic_exists",
+    "Topic already exists."
+)
+
+// @type Error
+EventHandler.TopicDoesNotExistError = Error.New(
+    false,
+    "topic_does_not_exist",
+    "Topic does not exist."
+)
+
+// @description Instantiate an event handler.
+// @example e = EventHandler.New()
+// @return {EventHandler}
+EventHandler.New = function()
+    e = new EventHandler
+    e.topics = {}
+    return e
+end function
+
+// @description Get whether or not a topic exists in the EventHandler.
+// @example e = EventHandler.New()
+// @example has_topic = e.has_topic("foobar")
+// @param {string} topic_name
+// @return {Topic}
+EventHandler.has_topic = function(topic_name)
+    return has_index(self.topics, topic_name)
+end function
+
+// @description Define an event topic.
+// @description Returns an error if the topic already exists.
+// @example e = EventHandler.New()
+// @example e.create_topic("foobar")
+// @param {string} topic_name
+// @return {Topic|Error}
+EventHandler.create_topic = function(topic_name)
+    if self.has_topic(topic_name) then
+        return Runtime.throw(EventHandler.TopicExistsError)
+    end if
+
+    topic = Topic.New(topic_name)
+    self.topics[topic_name] = topic
+    return topic
+end function
+
+// @description Get a topic the EventHandler already has.
+// @description Returns an error if the topic does not exist.
+// @example e = EventHandler.New()
+// @example t = e.get_topic("foobar")
+// @param {string} topic_name
+// @return {Topic|Error}
+EventHandler.get_topic = function(topic_name)
+    if not self.has_topic(topic_name) then
+        return Runtime.throw(EventHandler.TopicDoesNotExistError)
+    end if
+
+    return self.topics[topic_name]
+end function
+
+// @description Delete a topic in the EventHandler.
+// @description Returns an error if the topic does not exist.
+// @description Emits a message to topic signaling delete.
+// @example e = EventHandler.New()
+// @example e.delete_topic("foobar")
+// @param {string} topic_name
+// @return {Topic|Error}
+EventHandler.delete_topic = function(topic_name)
+    if not self.has_topic(topic_name) then
+        return Runtime.throw(EventHandler.TopicDoesNotExistError)
+    end if
+
+    self.get_topic(topic_name).emit(Message.New("Topic deleted"))
+    self.topics.remove(topic_name)
+end function

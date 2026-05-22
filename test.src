@@ -1,9 +1,14 @@
 #include ./src/data_structures/LRUCache.test.src
+#include ./src/events/EventHandler.test.src
+#include ./src/events/Message.test.src
+#include ./src/events/Subscriber.test.src
+#include ./src/events/Topic.test.src
 #include ./src/runtime/Error.test.src
 #include ./src/runtime/ErrorHandler.test.src
 #include ./src/runtime/Io.test.src
 #include ./src/runtime/Runtime.test.src
 #include ./src/serializers/JsonSerializer.test.src
 #include ./src/shared/Colors.test.src
+#include ./src/shared/Functions.test.src
 #include ./src/shared/Logger.test.src
 #include ./src/shared/Utilities.test.src

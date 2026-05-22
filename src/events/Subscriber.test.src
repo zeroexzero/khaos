@@ -1,0 +1,75 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Subscriber").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw_with = null
+    Runtime.throw = function(error)
+        test("Subscriber").called_runtime_throw_with = error
+        return error
+    end function
+end function
+
+test("Subscriber").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("Subscriber").expect("New throws when callback isn't a function").is = function(assert)
+    self = test("Subscriber")
+    subscriber = Subscriber.New()
+    assert.equals(subscriber, Subscriber.CallbackNotFunctionError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.CallbackNotFunctionError)
+    assert.is_false(subscriber isa Subscriber)
+end function
+
+test("Subscriber").expect("New returns correctly").is = function(assert)
+    subscriber = Subscriber.New(@print)
+    assert.is_true(subscriber isa Subscriber)
+end function
+
+test("Subscriber").expect("notify calls the callback with a message").is = function(assert)
+    called_callback_with = null
+    callback = function(message)
+        outer.called_callback_with = message
+    end function
+    subscriber = Subscriber.New(@callback)
+    subscriber.notify(Message.New("foobar"))
+    assert.is_true(called_callback_with isa Message)
+    assert.equals(called_callback_with.payload, "foobar")
+end function
+
+test("Subscriber").expect("notify throws Error when message isn't a Message").is = function(assert)
+    self = test("Subscriber")
+    error = Subscriber.New(@print).notify()
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Subscriber.New(@print).notify("foobar")
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Subscriber.New(@print).notify(true)
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Subscriber.New(@print).notify({})
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Subscriber.New(@print).notify([])
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+end function
+
+test()

@@ -1,0 +1,18 @@
+// @description Checks if an index exists on the given input.
+// @description Will also check __isa for classes.
+// @param {any} input
+// @param {any} index
+// @example can_emit = has_index(foobar, "emit")
+// @return {bool}
+has_index = function(input, index)
+    type = typeof(input)
+    // Input wasn't a map or list, it has no indexes.
+    if type != "list" and type != "map" then return false
+
+    // If list, just check if exists and return
+    if type == "list" then return input.hasIndex(index)
+
+    // Must be a map (or class). Handle accordingly
+    if input.hasIndex(index) then return true
+    return input.hasIndex("__isa") and input.__isa.hasIndex(index)
+end function

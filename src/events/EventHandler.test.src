@@ -1,0 +1,100 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("EventHandler").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw_with = null
+    Runtime.throw = function(error)
+        test("EventHandler").called_runtime_throw_with = error
+        return error
+    end function
+end function
+
+test("EventHandler").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("EventHandler").expect("New correctly returns").is = function(assert)
+    event_handler0 = EventHandler.New()
+    event_handler1 = EventHandler.New()
+    assert.equals(event_handler0.topics, {})
+    assert.equals(event_handler1.topics, {})
+
+    // manually push element to ensure event_handler0 and event_handler1 don't share topics
+    event_handler0.topics["foobar"] = true
+    assert.equals(1, event_handler0.topics.indexes().len())
+    assert.equals(0, event_handler1.topics.indexes().len())
+end function
+
+test("EventHandler").expect("has_topic correctly returns").is = function(assert)
+    topic_name = "foobar"
+    event_handler = EventHandler.New()
+    assert.is_false(event_handler.has_topic(topic_name))
+    event_handler.create_topic(topic_name)
+    assert.is_true(event_handler.has_topic(topic_name))
+end function
+
+test("EventHandler").expect("create_topic correctly creates the topic").is = function(assert)
+    topic_name = "foobar"
+    event_handler = EventHandler.New()
+    event_handler.create_topic(topic_name)
+    assert.is_true(has_index(event_handler.topics, topic_name))
+    assert.is_true(event_handler.topics[topic_name].name == topic_name)
+end function
+
+test("EventHandler").expect("create_topic throws Error when topic already exists").is = function(assert)
+    self = test("EventHandler")
+    event_handler = EventHandler.New()
+    result0 = event_handler.create_topic("foobar")
+    result1 = event_handler.create_topic("foobar")
+    assert.is_true(result0 isa Topic)
+    assert.is_true(result1 isa Error)
+    assert.equals(self.called_runtime_throw_with, EventHandler.TopicExistsError)
+end function
+
+test("EventHandler").expect("get_topic correctly returns the topic").is = function(assert)
+    topic_name = "foobar"
+    event_handler = EventHandler.New()
+    event_handler.create_topic(topic_name)
+    assert.is_true(event_handler.get_topic(topic_name) isa Topic)
+    assert.is_true(event_handler.get_topic(topic_name).name == topic_name)
+end function
+
+test("EventHandler").expect("get_topic throws Error when topic doesn't exist").is = function(assert)
+    self = test("EventHandler")
+    event_handler = EventHandler.New()
+    result = event_handler.get_topic("foobar")
+    assert.is_true(result isa Error)
+    assert.equals(self.called_runtime_throw_with, EventHandler.TopicDoesNotExistError)
+end function
+
+test("EventHandler").expect("delete_topic correctly deletes the topic").is = function(assert)
+    callback_called_with = null
+    callback = function(message)
+        outer.callback_called_with = message
+    end function
+    topic_name = "foobar"
+    event_handler = EventHandler.New()
+    event_handler.create_topic(topic_name)
+    event_handler.get_topic(topic_name).subscribe(Subscriber.New(@callback))
+    result = event_handler.delete_topic(topic_name)
+    assert.is_true(callback_called_with isa Message)
+    assert.equals(callback_called_with.payload, "Topic deleted")
+    assert.is_false(event_handler.has_topic(topic_name))
+end function
+
+test("EventHandler").expect("delete_topic throws Error when topic doesn't exist").is = function(assert)
+    self = test("EventHandler")
+    event_handler = EventHandler.New()
+    result = event_handler.delete_topic("foobar")
+    assert.is_true(result isa Error)
+    assert.equals(self.called_runtime_throw_with, EventHandler.TopicDoesNotExistError)
+end function
+
+test()

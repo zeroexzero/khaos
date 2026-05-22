@@ -1,0 +1,23 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Message").expect("New correctly returns").is = function(assert)
+    message = Message.New()
+    assert.is_true(message isa Message)
+    assert.is_true(message.payload == null)
+
+    message = Message.New("foobar")
+    assert.is_true(message isa Message)
+    assert.is_true(message.payload == "foobar")
+
+    TestClass = { "classID": "TestClass" }
+    TestClass.New = function()
+        return new TestClass
+    end function
+    message = Message.New(TestClass.New())
+    assert.is_true(message isa Message)
+    assert.is_true(message.payload isa TestClass)
+end function
+
+test()

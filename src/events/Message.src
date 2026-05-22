@@ -1,0 +1,24 @@
+// @type Message
+// @property {string} classID
+// @property {any} payload
+Message = {
+    "classID": "Message",
+    "payload": null,
+}
+
+// @type Error
+Message.NotAMessageError = Error.New(
+    false,
+    "not_a_message",
+    "Message is not a real Message object."
+)
+
+// @description Instantiate a message.
+// @example m = Message.New()
+// @param {any} payload
+// @return {Message}
+Message.New = function(payload)
+    message = new Message
+    message.payload = payload
+    return message
+end function

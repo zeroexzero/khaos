@@ -1,0 +1,32 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Functions").expect("has_index works with lists").is = function(assert)
+    assert.is_false(has_index([], 0))
+    assert.is_true(has_index(["a"], 0))
+end function
+
+test("Functions").expect("has_index works maps").is = function(assert)
+    assert.is_false(has_index({}, "foobar"))
+    assert.is_true(has_index({"foobar": ""}, "foobar"))
+end function
+
+test("Functions").expect("has_index works classes/instances").is = function(assert)
+    Animal = new map
+    Animal.is_animal = true
+
+    cat = new Animal
+    cat.meow = function()
+        // Do nothing
+    end function
+
+    assert.is_true(has_index(Animal, "is_animal"))
+    assert.is_false(has_index(Animal.__isa, "is_animal"))
+    assert.is_true(has_index(new Animal, "is_animal"))
+    assert.is_true(has_index(cat, "is_animal"))
+    assert.is_true(has_index(cat, "meow"))
+    assert.is_false(has_index(cat.__isa, "meow"))
+end function
+
+test()

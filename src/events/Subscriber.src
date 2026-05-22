@@ -1,0 +1,55 @@
+/*
+ * Dependencies:
+ *   - ../runtime/Runtime.src
+ *   - ./Message.src
+ */
+
+// @type Subscriber
+// @property {string} classID
+Subscriber = {
+    "classID": "Subscriber",
+    "callback": null,
+}
+
+// @type Error
+Subscriber.CallbackNotFunctionError = Error.New(
+    false,
+    "callback_not_function",
+    "Callback isn't a function."
+)
+
+// @type Error
+Subscriber.NotASubscriberError = Error.New(
+    false,
+    "not_a_subscriber",
+    "Subscriber is not a real Subscriber."
+)
+
+// @description Instantiate a subscriber.
+// @description Returns an error if the callback isn't a function.
+// @example s = Subscriber.New()
+// @param {function} callback
+// @return {Subscriber|Error}
+Subscriber.New = function(callback)
+    if typeof(@callback) != "function" then
+        return Runtime.throw(Subscriber.CallbackNotFunctionError)
+    end if
+
+    topic = new Subscriber
+    topic.callback = @callback
+    return topic
+end function
+
+// @description Notify the subscriber of a new Message.
+// @description Returns an error if the message isn't a Message.
+// @example s = Subscriber.New()
+// @example s.notify(Message.New())
+// @param {Message} message
+// @return {null|Error}
+Subscriber.notify = function(message)
+    if not @message isa Message then
+        return Runtime.throw(Message.NotAMessageError)
+    end if
+
+    self.callback(message)
+end function

@@ -1,0 +1,142 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Topic").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw_with = null
+    Runtime.throw = function(error)
+        test("Topic").called_runtime_throw_with = error
+        return error
+    end function
+end function
+
+test("Topic").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("Topic").expect("New correctly returns").is = function(assert)
+    topic0 = Topic.New("foobar")
+    topic1 = Topic.New("barfoo")
+    assert.equals(topic0.name, "foobar")
+    assert.equals(topic1.name, "barfoo")
+
+    // manually push element to ensure topic0 and topic1 don't share subscribers
+    topic0.subscribers.push("")
+    assert.equals(1, topic0.subscribers.len())
+    assert.equals(0, topic1.subscribers.len())
+
+    // manually push element to ensure topic0 and topic1 don't share history
+    topic0.history.insert("")
+    assert.equals(1, topic0.history.size())
+    assert.equals(0, topic1.history.size())
+end function
+
+test("Topic").expect("New throws Error when topic_name isn't a string").is = function(assert)
+    self = test("Topic")
+    error = Topic.New()
+    assert.equals(error, Topic.TopicNameIsNotStringError)
+    assert.equals(self.called_runtime_throw_with, Topic.TopicNameIsNotStringError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New(true)
+    assert.equals(error, Topic.TopicNameIsNotStringError)
+    assert.equals(self.called_runtime_throw_with, Topic.TopicNameIsNotStringError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New({})
+    assert.equals(error, Topic.TopicNameIsNotStringError)
+    assert.equals(self.called_runtime_throw_with, Topic.TopicNameIsNotStringError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New([])
+    assert.equals(error, Topic.TopicNameIsNotStringError)
+    assert.equals(self.called_runtime_throw_with, Topic.TopicNameIsNotStringError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Topic").expect("subscribe works when called with Subscriber").is = function(assert)
+    subscriber = Subscriber.New(@print)
+    topic = Topic.New("foobar")
+    topic.subscribe(subscriber)
+    assert.equals(topic.subscribers.len(), 1)
+    assert.equals(@topic.subscribers[0].callback, @print)
+    assert.not_equals(@topic.subscribers[0].callback, @exit)
+end function
+
+test("Topic").expect("subscribe throws Error when subscriber isn't a Subscriber").is = function(assert)
+    self = test("Topic")
+    error = Topic.New("foobar").subscribe()
+    assert.equals(error, Subscriber.NotASubscriberError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.NotASubscriberError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").subscribe("foobar")
+    assert.equals(error, Subscriber.NotASubscriberError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.NotASubscriberError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").subscribe(true)
+    assert.equals(error, Subscriber.NotASubscriberError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.NotASubscriberError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").subscribe({})
+    assert.equals(error, Subscriber.NotASubscriberError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.NotASubscriberError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").subscribe([])
+    assert.equals(error, Subscriber.NotASubscriberError)
+    assert.equals(self.called_runtime_throw_with, Subscriber.NotASubscriberError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Topic").expect("emit throws Error when message isn't a Message").is = function(assert)
+    self = test("Topic")
+    error = Topic.New("foobar").emit()
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").emit("foobar")
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").emit(true)
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").emit({})
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+
+    error = Topic.New("foobar").emit([])
+    assert.equals(error, Message.NotAMessageError)
+    assert.equals(self.called_runtime_throw_with, Message.NotAMessageError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Topic").expect("emit propagates to all subscribers").is = function(assert)
+    callback_call_counter = 0
+    callback = function(message)
+        outer.callback_call_counter = outer.callback_call_counter + 1
+    end function
+    subscriber0 = Subscriber.New(@callback)
+    subscriber1 = Subscriber.New(@callback)
+    topic = Topic.New("foobar")
+    topic.subscribe(subscriber0)
+    topic.subscribe(subscriber1)
+    topic.emit(Message.New("foobar"))
+    assert.equals(callback_call_counter, 2)
+end function
+
+test()
