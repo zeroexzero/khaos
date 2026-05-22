@@ -47,11 +47,13 @@ test("Kernel").expect("Kernel.boot starts & configures runtime, io, and logger")
     assert.is_false(self.called_io_init)
     assert.is_false(self.called_logger_set_output_stream)
     assert.equals(self.called_logger_debug_with, "")
+    assert.equals(Kernel.event_handler, null)
     Kernel.boot()
     assert.is_true(self.called_runtime_init)
     assert.is_true(self.called_io_init)
     assert.is_true(self.called_logger_set_output_stream)
     assert.equals(self.called_logger_debug_with, "We've booted")
+    assert.is_true(Kernel.event_handler isa EventHandler)
 end function
 
 test()

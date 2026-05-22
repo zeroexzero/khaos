@@ -1,5 +1,16 @@
+/*
+ * Dependencies:
+ *   - ../events/EventHandler.src
+ *   - ../runtime/Io.src
+ *   - ../runtime/Runtime.src
+ *   - ../shared/Logger.src
+ */
+
 // @type Kernel
-Kernel = {}
+// @property {null|EventHandler} event_handler
+Kernel = {
+    "event_handler": null
+}
 
 // @description Boot the kernel, this stitches everything together.
 // @example Kernel.boot()
@@ -11,6 +22,11 @@ Kernel.boot = function()
     // Unnecessary to set output stream to Io as it currently defaults to that
     // In the future, might want to set output stream to some file handle.
     Logger.set_output_stream(Io)
+
+    // Setup the event handler
+    event_handler = EventHandler.New()
+    // We'll eventually create topics here
+    self.event_handler = event_handler
 
     Logger.debug("We've booted")
 end function
