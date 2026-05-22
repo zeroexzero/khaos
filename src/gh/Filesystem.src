@@ -1,0 +1,110 @@
+/*
+ * Dependencies:
+ *   - ../runtime/Runtime.src
+ */
+
+// @type Filesystem
+Filesystem = {}
+
+// @type {Error}
+Filesystem.InvalidAccessTypeError = Error.New(
+    false,
+    "invalid_access_type",
+    "Invalid access type."
+)
+
+// @type {Error}
+Filesystem.InvalidFilePathError = Error.New(
+    false,
+    "invalid_file_path",
+    "Invalid file path."
+)
+
+// @type {Error}
+Filesystem.FileNotFoundError = Error.New(
+    false,
+    "file_not_found",
+    "File not found."
+)
+
+// @description Obtain a File from the given acess and file_path.
+// @description Returns an error if the file doesn't exist.
+// @description Returns an error if input params don't match expected.
+// @example passwd_file = Filesystem.get_file(get_shell(), "/etc/passwd")
+// @param {Shell|Computer|File} access
+// @param {string} file_path
+// @return {File|Error}
+Filesystem.get_file = function(access, file_path)
+    if typeof(file_path) != "string" or file_path.len() == 0 or file_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    if file_path.len() > 1 and file_path[-1] == "/" then
+        file_path = file_path[:-1]
+    end if
+
+    access_type = typeof(access)
+    if ["shell", "computer", "file"].indexOf(access_type) == null then
+        return Runtime.throw(Filesystem.InvalidAccessTypeError)
+    end if
+
+    file = null
+    if access_type == "shell" then
+        file = access.host_computer().File(file_path)
+    else if access_type == "computer" then
+        file = access.File(file_path)
+    end if
+
+    // We've exhausted the shell & computer approach
+    if access_type != "file" then
+        if typeof(file) != "file" then return Runtime.throw(Filesystem.FileNotFoundError)
+        return file
+    end if
+
+    // Traverse parents until at common parent directory
+    common_parent = access.parent()
+    while common_parent and file_path.indexOf(common_parent.path()) != 0
+        common_parent = common_parent.parent()
+    end while
+
+    // Somehow found 0 common parents (including /)
+    if typeof(common_parent) != "file" then
+        return Runtime.throw(Filesystem.FileNotFoundError)
+    end if
+
+    // If file_path is / then common_parent must be /, we can just return common_parent
+    if file_path == "/" then return common_parent
+
+    // Get the folders in the desired path. /home/test => ["home", "test"]
+    file_names_in_desired_path = file_path.split("/")[1:]
+
+    // If we somehow lack names of files in path, we've got an error
+    if not file_names_in_desired_path.len() then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    // Lets traverse child folders/files until we hit the desired one
+    i = -1
+    f_len = file_names_in_desired_path.len()
+    current_file = common_parent
+    while i < f_len - 1
+        i = i + 1
+        next_file_name = file_names_in_desired_path[i]
+
+        // Looking for files now
+        if i == f_len - 1 then
+            for child in current_file.get_files()
+                if child.name() == next_file_name then return child
+            end for
+
+        // Look for next folder in path
+        else
+            for child in current_file.get_folders()
+                if child.name() == next_file_name then current_file = child
+            end for
+        end if
+    end while
+
+    // If we got here, no file was found
+    return Runtime.throw(Filesystem.FileNotFoundError)
+end function

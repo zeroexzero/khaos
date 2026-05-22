@@ -3,6 +3,7 @@
 #include ./src/events/Message.test.src
 #include ./src/events/Subscriber.test.src
 #include ./src/events/Topic.test.src
+#include ./src/gh/Filesystem.test.src
 #include ./src/runtime/Error.test.src
 #include ./src/runtime/ErrorHandler.test.src
 #include ./src/runtime/Io.test.src

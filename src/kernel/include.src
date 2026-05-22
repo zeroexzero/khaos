@@ -19,5 +19,8 @@ import_code("../events/Topic.src")
 import_code("../serializers/JsonSerializer.src")
 import_code("../serializers/jstroutJsonSerializer.src")
 
+// GH-Specific code
+import_code("../gh/Filesystem.src")
+
 // Core code
 import_code("../kernel/Kernel.src")

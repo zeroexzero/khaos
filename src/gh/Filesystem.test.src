@@ -1,0 +1,125 @@
+#import test from ../../modules/0x0Test/src/test.src
+
+import_code("../kernel/include.src")
+
+test("Filesystem").setup = function()
+    super.setup()
+
+    // Mock Runtime init
+    self.original_runtime_throw = Runtime["throw"]
+    self.called_runtime_throw_with = null
+    Runtime.throw = function(error)
+        test("Filesystem").called_runtime_throw_with = error
+        return error
+    end function
+end function
+
+test("Filesystem").teardown = function()
+    // Restore mocks
+    Runtime.throw = self["original_runtime_throw"]
+    super.teardown()
+end function
+
+test("Filesystem").expect("get_file can get files with shell").is = function(assert)
+    s = get_shell()
+    assert.equals(Filesystem.get_file(s, "/").path(), "/")
+    assert.equals(Filesystem.get_file(s, "//").path(), "/")
+    assert.equals(Filesystem.get_file(s, "/etc/passwd").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(s, "/etc/passwd/").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(s, program_path()).path(), program_path())
+    assert.equals(Filesystem.get_file(s, program_path() + "/").path(), program_path())
+end function
+
+test("Filesystem").expect("get_file can get files with computer").is = function(assert)
+    s = get_shell()
+    c = s.host_computer()
+    assert.equals(Filesystem.get_file(c, "/").path(), "/")
+    assert.equals(Filesystem.get_file(c, "//").path(), "/")
+    assert.equals(Filesystem.get_file(c, "/etc/passwd").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(c, "/etc/passwd/").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(c, program_path()).path(), program_path())
+    assert.equals(Filesystem.get_file(c, program_path() + "/").path(), program_path())
+end function
+
+test("Filesystem").expect("get_file can get files with file").is = function(assert)
+    s = get_shell()
+    c = s.host_computer()
+    f = c.File(program_path())
+    assert.equals(Filesystem.get_file(f, "/").path(), "/")
+    assert.equals(Filesystem.get_file(f, "//").path(), "/")
+    assert.equals(Filesystem.get_file(f, "/etc/passwd").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(f, "/etc/passwd/").path(), "/etc/passwd")
+    assert.equals(Filesystem.get_file(f, program_path()).path(), program_path())
+    assert.equals(Filesystem.get_file(f, program_path() + "/").path(), program_path())
+end function
+
+test("Filesystem").expect("get_file throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.get_file(null, "/")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(true, "/")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file({}, "/")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file([], "/")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("get_file throws Error when path is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.get_file(get_shell(), null)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), true)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), {})
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), "")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("get_file throws Error when file doesn't exist").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.get_file(get_shell(), program_path() + "/missing_file")
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), "/foobar")
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
+end function
+
+test()
