@@ -231,6 +231,8 @@ test("Filesystem").expect("copy can replace a file").is = function(assert)
 
     result = Filesystem.copy(s, parent_folder + "/copytest1", parent_folder + "/copytest2")
     assert.equals(Filesystem.get_file(s, parent_folder + "/copytest2").get_content(), "foobar")
+    Filesystem.get_file(s, parent_folder + "/copytest1").delete()
+    Filesystem.get_file(s, parent_folder + "/copytest2").delete()
     assert.is_true(result)
 end function
 
@@ -328,6 +330,7 @@ test("Filesystem").expect("move can move a file").is = function(assert)
     assert.is_true(result)
     assert.equals(Filesystem.get_file(get_shell(), parent_folder + "/movetest1"), Filesystem.FileNotFoundError)
     assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/movetest2")), "file")
+    Filesystem.get_file(get_shell(), parent_folder + "/movetest2").delete()
 end function
 
 test("Filesystem").expect("move can replace a file").is = function(assert)
@@ -341,6 +344,7 @@ test("Filesystem").expect("move can replace a file").is = function(assert)
     result = Filesystem.move(s, parent_folder + "/movetest1", parent_folder + "/movetest2")
     assert.equals(Filesystem.get_file(s, parent_folder + "/movetest2").get_content(), sample_text)
     assert.is_true(result)
+    Filesystem.get_file(get_shell(), parent_folder + "/movetest2").delete()
 end function
 
 test("Filesystem").expect("move throws Error when origin_path isn't valid").is = function(assert)
@@ -443,6 +447,9 @@ test("Filesystem").expect("touch can create a file").is = function(assert)
     result = Filesystem.touch(get_shell().host_computer().File("/"), parent_folder + "/testfile3")
     assert.is_true(result)
     assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfile3")), "file")
+    Filesystem.get_file(get_shell(), parent_folder + "/testfile1").delete()
+    Filesystem.get_file(get_shell(), parent_folder + "/testfile2").delete()
+    Filesystem.get_file(get_shell(), parent_folder + "/testfile3").delete()
 end function
 
 test("Filesystem").expect("touch throws Error when access is invalid").is = function(assert)
@@ -479,6 +486,7 @@ test("Filesystem").expect("touch throws Error when file already exists").is = fu
     assert.equals(error, Filesystem.FileAlreadyExistsError)
     assert.equals(self.called_runtime_throw_with, Filesystem.FileAlreadyExistsError)
     self.called_runtime_throw_with = null
+    Filesystem.get_file(get_shell(), new_file).delete()
 end function
 
 test("Filesystem").expect("touch throws Error when path is invalid").is = function(assert)
@@ -522,6 +530,7 @@ test("Filesystem").expect("touch throws Error when file name is too long").is = 
     error = Filesystem.touch(get_shell(), file_name)
     assert.equals(error, Filesystem.FileNameTooLongError)
     assert.equals(self.called_runtime_throw_with, Filesystem.FileNameTooLongError)
+    Filesystem.get_file(get_shell(), file_name[:-1]).delete()
 end function
 
 test("Filesystem").expect("touch throws Error when not permitted").is = function(assert)
@@ -552,6 +561,104 @@ test("Filesystem").expect("touch throws Error when donor file cannot be found").
     error = Filesystem.touch(mock_access, "/test")
     assert.equals(error, Filesystem.DonorFileNotFoundError)
     assert.equals(self.called_runtime_throw_with, Filesystem.DonorFileNotFoundError)
+end function
+
+test("Filesystem").expect("sdelete can delete a file").is = function(assert)
+    parent_folder = parent_path(program_path())
+    // In this environment, our logic defaults to /home/test/Config/Bank.txt
+    // Let's ensure that this is the ONLY file that can be our donor file
+    // This way we can check permissions before/after remaining the same
+    rs = get_shell("root", "test")
+    rc = rs.host_computer()
+
+    // Cache bank file info
+    bank = rc.File("/home/test/Config/Bank.txt")
+    bank_owner = bank.owner()
+    bank_group = bank.group()
+    bank_permissions = bank.permissions()
+    bank.set_owner("root")
+    bank.set_group("root")
+
+    // Cache mail file info
+    mail = rc.File("/home/test/Config/Mail.txt")
+    mail.set_owner("root")
+    mail.set_group("root")
+    mail_owner = mail.owner()
+    mail_group = mail.group()
+
+    // Verify that sdelete CANNOT find a donor file (returns false)
+    assert.is_true(Filesystem.touch(get_shell(), parent_folder + "/sdelete1"))
+    assert.is_false(Filesystem.sdelete(get_shell(), parent_folder + "/sdelete1"))
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/sdelete1")), "file")
+
+    // Let's then expose Bank.txt to be potential donor
+    bank.set_owner(bank_owner)
+    bank.set_group(bank_group)
+    assert.is_true(Filesystem.sdelete(get_shell(), parent_folder + "/sdelete1"))
+    assert.equals(bank.owner(), bank_owner)
+    assert.equals(bank.group(), bank_group)
+    assert.equals(bank.permissions(), bank_permissions)
+    assert.equals(Filesystem.get_file(get_shell(), parent_folder + "/sdelete1"), Filesystem.FileNotFoundError)
+
+    // Reset bank and mail owner/group
+    bank.set_owner(bank_owner)
+    bank.set_group(bank_group)
+    mail.set_owner(mail_owner)
+    mail.set_group(mail_group)
+end function
+
+test("Filesystem").expect("sdelete throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.sdelete(null, "/etc/passwd")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete(true, "/etc/passwd")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete({}, "/etc/passwd")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete([], "/etc/passwd")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("sdelete throws Error when path is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.sdelete(get_shell(), null)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete(get_shell(), true)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete(get_shell(), {})
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.sdelete(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("sdelete throws Error when file does not exist").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.sdelete(get_shell(), "/a/b/c/d")
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
 end function
 
 test()

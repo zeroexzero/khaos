@@ -303,6 +303,7 @@ end function
 
 // @description Create a File at the given file_path using access.
 // @description Returns an error if the file already exists.
+// @description Returns an error if access type is file and donor file cannot be found.
 // @description Returns an error if input params don't match expected.
 // @example Filesystem.touch(get_shell(), "/home/test/myprogram.src")
 // @param {shell|computer|file} access
@@ -369,7 +370,14 @@ Filesystem.touch = function(access, file_path)
         return is_file and ideal_permissions
     end function
 
+    Runtime.try()
     file = Filesystem.find_file(access, @filter)
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 then error = Filesystem.FileNotFoundError
+        return Runtime.throw(error)
+    end if
     if typeof(file) != "file" then
         return Runtime.throw(Filesystem.DonorFileNotFoundError)
     end if
@@ -391,4 +399,90 @@ Filesystem.touch = function(access, file_path)
     end if
 
     return true
+end function
+
+// @description Attempt to silently "delete" a file by way of utilizing the move functionality.
+// @description Returns an error if the file does not exist.
+// @description Returns an error if access type is file and donor file cannot be found.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.touch(get_shell(), "/home/test/myprogram.src")
+// @param {shell|computer|file} access
+// @param {string} file_path
+// @return {number|Error}
+Filesystem.sdelete = function(access, file_path)
+    if typeof(file_path) != "string" or file_path.len() <= 1 or file_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    if file_path.len() > 1 and file_path[-1] == "/" then
+        file_path = file_path[:-1]
+    end if
+
+    // Final check for file_path being just /
+    if file_path == "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    target_file = Filesystem.get_file(access, file_path)
+    if typeof(target_file) != "file" then
+        if target_file isa Error then return Runtime.throw(target_file)
+        return Runtime.throw(Filesystem.UnknownFilesystemError)
+    end if
+
+    target_file_path = target_file.path()
+    target_file_is_folder = target_file.is_folder()
+
+    filter_func = function(file)
+        if typeof(file) != "file" or not file then return false
+        if file.path() == "/" or file.path() == target_file_path then return false
+        if not file.has_permission("w") or not file.parent().has_permission("w") then return false
+        if file.is_folder() != target_file_is_folder then return false
+        if file.path().indexOf(target_file_path) == 0 then return false // Cannot be a child
+        return true
+    end function
+
+    Runtime.try()
+    donor_file = Filesystem.find_file(Filesystem.get_file(access, "/"), @filter_func)
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 then error = Filesystem.FileNotFoundError
+        return Runtime.throw(error)
+    end if
+
+    if typeof(donor_file) != "file" or not donor_file then return false
+
+    original_path = donor_file.path()
+    original_permissions = donor_file.permissions()
+    original_owner = donor_file.owner()
+    original_group = donor_file.group()
+    user_perms = original_permissions[1:4].replace("-", "")
+    group_perms = original_permissions[4:7].replace("-", "")
+    other_perms = original_permissions[7:10].replace("-", "")
+
+    Runtime.try()
+    result = Filesystem.move(access, original_path, file_path)
+    result = result and Filesystem.move(access, file_path, original_path)
+    donor_file = Filesystem.get_file(access, original_path)
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 then error = errors[0]
+        return Runtime.throw(error)
+    end if
+
+    donor_file.chmod("u-rwx")
+    if user_perms != "" then donor_file.chmod("u+" + user_perms)
+
+    donor_file.chmod("g-rwx")
+    if group_perms != "" then donor_file.chmod("g+" + group_perms)
+
+    donor_file.chmod("o-rwx")
+    if other_perms != "" then donor_file.chmod("o+" + other_perms)
+
+    donor_file.set_owner(original_owner)
+    donor_file.set_group(original_group)
+
+    // Result isn't always a number, but it can be truthy
+    return not (not result)
 end function
