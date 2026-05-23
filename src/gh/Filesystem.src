@@ -308,7 +308,7 @@ end function
 // @example Filesystem.touch(get_shell(), "/home/test/myprogram.src")
 // @param {shell|computer|file} access
 // @param {string} file_path
-// @return {null|Error}
+// @return {number|Error}
 Filesystem.touch = function(access, file_path)
     if typeof(file_path) != "string" or file_path.len() <= 1 or file_path[0] != "/" then
         return Runtime.throw(Filesystem.InvalidFilePathError)
@@ -485,4 +485,57 @@ Filesystem.sdelete = function(access, file_path)
 
     // Result isn't always a number, but it can be truthy
     return not (not result)
+end function
+
+// @description Create a folder at the given file_path using access. Mkdir with file
+// @description access not currently supported.
+// @description Returns an error if the folder already exists.
+// @description Returns an error if access type is file and donor folder cannot be found.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.mkdir(get_shell(), "/home/test/somefolder")
+// @param {shell|computer} access
+// @param {string} folder_path
+// @return {null|Error}
+Filesystem.mkdir = function(access, folder_path)
+    if typeof(folder_path) != "string" or folder_path.len() <= 1 or folder_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    if folder_path.len() > 1 and folder_path[-1] == "/" then
+        folder_path = folder_path[:-1]
+    end if
+
+    // Final check for folder_path being just /
+    if folder_path == "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    access_type = typeof(access)
+    if ["shell", "computer"].indexOf(access_type) == null then
+        return Runtime.throw(Filesystem.InvalidAccessTypeError)
+    end if
+
+    file = null
+    folder_path_parts = folder_path.split("/")
+    folder_name = folder_path_parts[-1]
+    container_path = parent_path(folder_path)
+    if folder_name.len() >= 128 then
+        return Runtime.throw(Filesystem.FileNameTooLongError)
+    end if
+
+    c = access
+    if access_type == "shell" then c = access.host_computer()
+    result = c.create_folder(container_path, folder_name)
+    if result != 1 then
+        error = Filesystem.UnknownFilesystemError
+        if result == "The folder already exists" then
+            error = Filesystem.FileAlreadyExistsError
+        else if lower(result).indexOf("permission") != null then
+            error = Filesystem.InvalidPermissionsError
+        else if lower(result).indexOf("invalid path") != null then
+            error = Filesystem.InvalidFilePathError
+        end if
+        return Runtime.throw(error)
+    end if
+    return true // File created successfully
 end function

@@ -661,4 +661,111 @@ test("Filesystem").expect("sdelete throws Error when file does not exist").is = 
     self.called_runtime_throw_with = null
 end function
 
+test("Filesystem").expect("mkdir can create a file").is = function(assert)
+    parent_folder = parent_path(program_path())
+    result = Filesystem.mkdir(get_shell(), parent_folder + "/testfolder1")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfolder1")), "file")
+
+    result = Filesystem.mkdir(get_shell().host_computer(), parent_folder + "/testfolder2")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfolder2")), "file")
+
+    Filesystem.get_file(get_shell(), parent_folder + "/testfolder1").delete()
+    Filesystem.get_file(get_shell(), parent_folder + "/testfolder2").delete()
+end function
+
+test("Filesystem").expect("mkdir throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    new_file = parent_path(program_path()) + "/test"
+    error = Filesystem.mkdir(null, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(true, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir({}, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir([], new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(get_shell().host_computer().File("/"), new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("mkdir throws Error when folder already exists").is = function(assert)
+    self = test("Filesystem")
+    new_folder = parent_path(program_path()) + "/test"
+    result = Filesystem.mkdir(get_shell(), new_folder)
+    assert.is_true(result)
+
+    error = Filesystem.mkdir(get_shell(), new_folder)
+    assert.equals(error, Filesystem.FileAlreadyExistsError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileAlreadyExistsError)
+    self.called_runtime_throw_with = null
+    Filesystem.get_file(get_shell(), new_folder).delete()
+end function
+
+test("Filesystem").expect("mkdir throws Error when path is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.mkdir(get_shell(), null)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(get_shell(), true)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(get_shell(), {})
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.mkdir(get_shell(), "/a/b/c/d")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("mkdir throws Error when file name is too long").is = function(assert)
+    self = test("Filesystem")
+    folder_name = parent_path(program_path()) + "/"
+    for i in range(0, 126) // Construct 127-character file name
+        folder_name = folder_name + "a"
+    end for
+    assert.is_true(Filesystem.mkdir(get_shell(), folder_name))
+
+    // Now make it too long
+    folder_name = folder_name + "a"
+    error = Filesystem.mkdir(get_shell(), folder_name)
+    assert.equals(error, Filesystem.FileNameTooLongError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNameTooLongError)
+    Filesystem.get_file(get_shell(), folder_name[:-1]).delete()
+end function
+
+test("Filesystem").expect("mkdir throws Error when not permitted").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.mkdir(get_shell(), "/root/test")
+    assert.equals(error, Filesystem.InvalidPermissionsError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidPermissionsError)
+end function
+
 test()
