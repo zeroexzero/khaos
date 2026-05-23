@@ -121,6 +121,11 @@ test("Filesystem").expect("get_file throws Error when file doesn't exist").is = 
     assert.equals(error, Filesystem.FileNotFoundError)
     assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
     self.called_runtime_throw_with = null
+
+    error = Filesystem.get_file(get_shell(), "/a/b/c/d")
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
 end function
 
 test("Filesystem").expect("find_file can return expected").is = function(assert)
@@ -210,6 +215,84 @@ test("Filesystem").expect("find_file throws Error when / cannot be found somehow
     self.called_runtime_throw_with = null
 end function
 
+test("Filesystem").expect("copy can copy a file").is = function(assert)
+    result = Filesystem.copy(get_shell(), program_path(), program_path() + "1")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), program_path() + "1")), "file")
+end function
+
+test("Filesystem").expect("copy can replace a file").is = function(assert)
+    parent_folder = parent_path(program_path())
+    s = get_shell()
+    assert.is_true(Filesystem.touch(s, parent_folder + "/copytest1"))
+    Filesystem.get_file(s, parent_folder + "/copytest1").set_content("foobar")
+    assert.is_true(Filesystem.touch(s, parent_folder + "/copytest2"))
+    assert.equals(Filesystem.get_file(s, parent_folder + "/copytest2").get_content(), "")
+
+    result = Filesystem.copy(s, parent_folder + "/copytest1", parent_folder + "/copytest2")
+    assert.equals(Filesystem.get_file(s, parent_folder + "/copytest2").get_content(), "foobar")
+    assert.is_true(result)
+end function
+
+test("Filesystem").expect("copy throws Error when origin_path isn't valid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.copy(get_shell(), null, program_path + "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy(get_shell(), "", program_path + "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy(get_shell(), 1, program_path + "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy(get_shell(), {}, program_path + "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy(get_shell(), [], program_path + "asd")
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("copy throws Error when file at origin_path doesn't exist").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.copy(get_shell(), "/a/b/c/d", program_path + "asd")
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("copy throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.copy(null, "/etc/passwd", "/etc/passwd1")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy(true, "/etc/passwd", "/etc/passwd1")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy({}, "/etc/passwd", "/etc/passwd1")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.copy([], "/etc/passwd", "/etc/passwd1")
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
 test("Filesystem").expect("touch can create a file").is = function(assert)
     parent_folder = parent_path(program_path())
     result = Filesystem.touch(get_shell(), parent_folder + "/testfile1")
@@ -279,6 +362,11 @@ test("Filesystem").expect("touch throws Error when path is invalid").is = functi
     self.called_runtime_throw_with = null
 
     error = Filesystem.touch(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch(get_shell(), "/a/b/c/d")
     assert.equals(error, Filesystem.InvalidFilePathError)
     assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
     self.called_runtime_throw_with = null

@@ -208,6 +208,7 @@ Filesystem.find_file = function(access, filter)
 end function
 
 // @description Copy a File at the given origin_path to the new_path using access.
+// @description Returns an error if the new_path isn't valid.
 // @description Returns an error if the new_path already exists.
 // @description Returns an error if the origin_path does not exist.
 // @description Returns an error if input params don't match expected.
@@ -219,12 +220,25 @@ end function
 Filesystem.copy = function(access, origin_path, new_path)
     origin = Filesystem.get_file(access, origin_path)
     if typeof(origin) != "file" then
-        if typeof(origin) isa Error then return Runtime.throw(origin)
+        if origin isa Error then return Runtime.throw(origin)
         return Runtime.throw(Filesystem.UnknownFilesystemError)
     end if
 
     destination_path = new_path.split("/")[0:-1].join("/")
     if destination_path.indexOf("/") != 0 then destination_path = "/" + destination_path
+
+    // If the destination path doesn't exist, we should throw an Error
+    Runtime.try()
+    destination_file = Filesystem.get_file(access, destination_path)
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 and errors[0] == Filesystem.InvalidFilePathError then
+            error = errors[0]
+        end if
+        return Runtime.throw(error)
+    end if
+
     new_file_name = new_path.split("/")[-1]
     result = origin.copy(destination_path, new_file_name)
     if result != true then
@@ -281,6 +295,8 @@ Filesystem.touch = function(access, file_path)
                 error = Filesystem.FileAlreadyExistsError
             else if lower(result).indexOf("permission") != null then
                 error = Filesystem.InvalidPermissionsError
+            else if lower(result).indexOf("invalid path") != null then
+                error = Filesystem.InvalidFilePathError
             end if
             return Runtime.throw(error)
         end if

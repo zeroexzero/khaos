@@ -17,7 +17,6 @@ import_code("../events/Message.src")
 import_code("../events/Subscriber.src")
 import_code("../events/Topic.src")
 import_code("../serializers/JsonSerializer.src")
-import_code("../serializers/jstroutJsonSerializer.src")
 
 // GH-Specific code
 import_code("../gh/Filesystem.src")
