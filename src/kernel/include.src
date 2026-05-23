@@ -20,6 +20,7 @@ import_code("../serializers/JsonSerializer.src")
 
 // GH-Specific code
 import_code("../gh/Filesystem.src")
+import_code("../serializers/GHFileContentSerializer.src")
 
 // Core code
 import_code("../kernel/Kernel.src")

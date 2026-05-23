@@ -1,0 +1,83 @@
+/*
+ * Dependencies:
+ *   - ../gh/Filesystem.src
+ *   - ../runtime/Runtime.src
+ */
+
+// @type GHFileContentSerializer
+GHFileContentSerializer = {}
+
+// @type {Error}
+GHFileContentSerializer.FolderNotAFileError = Error.New(
+    false,
+    "folder_not_a_file",
+    "Folder is not an instance of File."
+)
+
+// @type {Error}
+GHFileContentSerializer.InvalidPrefixError = Error.New(
+    false,
+    "invalid_prefix",
+    "Invalid prefix."
+)
+
+// @description Given a folder containing files matching the prefix, assemble a string from
+// @description the content of those files.
+// @description Returns an error if any of the files aren't readable.
+// @example my_str = GHFileContentSerializer.deserialize("/home/test", "file")
+// @param {File} folder
+// @param {string} prefix
+// @return {string|Error}
+GHFileContentSerializer.serialize = function(folder, prefix)
+    if typeof(@folder) != "file" then
+        return Runtime.throw(GHFileContentSerializer.FolderNotAFileError)
+    end if
+    if not folder.is_folder() then
+        return Runtime.throw(Filesystem.FileNotFoundError)
+    end if
+    if typeof(prefix) != "string" or not prefix.len() then
+        return Runtime.throw(GHFileContentSerializer.InvalidPrefixError)
+    end if
+
+    files_in_set = {}
+    file_number = null
+    for child in folder.get_files()
+        if child.name().indexOf(prefix) != 0 then continue
+        file_number = child.name()[prefix.len():].to_int()
+        if typeof(file_number) != "number" or file_number < 0 then continue
+        files_in_set[file_number] = child
+    end for
+
+    if file_number == null then
+        return Runtime.throw(Filesystem.FileNotFoundError)
+    end if
+
+    // Ensure no missing files (E.g. prefix0, prefix2)
+    if range(0, file_number) != files_in_set.indexes() then
+        return Runtime.throw(Filesystem.FileNotFoundError)
+    end if
+
+    ret_str = ""
+    for idx in range(0, file_number)
+        ret_str = ret_str + files_in_set[idx].get_content()
+    end for
+
+    return ret_str
+end function
+
+// @description Deserialize the given string into GH files. Each file will contain up to
+// @description 160k characters. This will save files to the system.
+// @description Returns an error if parameters don't match expected types or if files cannot
+// @description be written.
+// @example deposit_folder = get_shell().host_computer().File("/home/test")
+// @example file_strs = GHFileContentSerializer.deserialize("foobar", "file", deposit_folder)
+// @param {string} input
+// @param {string} prefix
+// @param {file} folder
+// @return {list<string>}
+GHFileContentSerializer.deserialize = function(input, prefix, folder)
+    if typeof(@folder) != "file" then
+        return Runtime.throw(GHFileContentSerializer.FolderNotAFileError)
+    end if
+
+end function

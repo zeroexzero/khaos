@@ -8,6 +8,7 @@
 #include ./src/runtime/ErrorHandler.test.src
 #include ./src/runtime/Io.test.src
 #include ./src/runtime/Runtime.test.src
+#include ./src/serializers/GHFileContentSerializer.test.src
 #include ./src/serializers/JsonSerializer.test.src
 #include ./src/shared/Colors.test.src
 #include ./src/shared/Functions.test.src
