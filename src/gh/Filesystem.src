@@ -21,19 +21,61 @@ Filesystem.InvalidFilePathError = Error.New(
 )
 
 // @type {Error}
+Filesystem.InvalidFilterError = Error.New(
+    false,
+    "invalid_filter",
+    "Invalid filter."
+)
+
+// @type {Error}
 Filesystem.FileNotFoundError = Error.New(
     false,
     "file_not_found",
     "File not found."
 )
 
+// @type {Error}
+Filesystem.FileNameTooLongError = Error.New(
+    false,
+    "file_name_too_long",
+    "File name longer than 128 limit."
+)
+
+// @type {Error}
+Filesystem.FileAlreadyExistsError = Error.New(
+    false,
+    "file_already_exists",
+    "File already exists."
+)
+
+// @type {Error}
+Filesystem.UnknownFilesystemError = Error.New(
+    false,
+    "unknown_filesystem_error",
+    "Unknown filesystem error."
+)
+
+// @type {Error}
+Filesystem.DonorFileNotFoundError = Error.New(
+    false,
+    "donor_file_not_found",
+    "Donor file could not be found."
+)
+
+// @type {Error}
+Filesystem.InvalidPermissionsError = Error.New(
+    false,
+    "invalid_permissions_error",
+    "Invalid permissions."
+)
+
 // @description Obtain a File from the given acess and file_path.
 // @description Returns an error if the file doesn't exist.
 // @description Returns an error if input params don't match expected.
 // @example passwd_file = Filesystem.get_file(get_shell(), "/etc/passwd")
-// @param {Shell|Computer|File} access
+// @param {shell|computer|file} access
 // @param {string} file_path
-// @return {File|Error}
+// @return {file|Error}
 Filesystem.get_file = function(access, file_path)
     if typeof(file_path) != "string" or file_path.len() == 0 or file_path[0] != "/" then
         return Runtime.throw(Filesystem.InvalidFilePathError)
@@ -62,8 +104,8 @@ Filesystem.get_file = function(access, file_path)
     end if
 
     // Traverse parents until at common parent directory
-    common_parent = access.parent()
-    while common_parent and file_path.indexOf(common_parent.path()) != 0
+    common_parent = access
+    while common_parent and file_path.indexOf(common_parent.path()) == null
         common_parent = common_parent.parent()
     end while
 
@@ -73,7 +115,7 @@ Filesystem.get_file = function(access, file_path)
     end if
 
     // If file_path is / then common_parent must be /, we can just return common_parent
-    if file_path == "/" then return common_parent
+    if file_path == "/" or file_path == common_parent.path() then return common_parent
 
     // Get the folders in the desired path. /home/test => ["home", "test"]
     file_names_in_desired_path = file_path.split("/")[1:]
@@ -107,4 +149,179 @@ Filesystem.get_file = function(access, file_path)
 
     // If we got here, no file was found
     return Runtime.throw(Filesystem.FileNotFoundError)
+end function
+
+// @description Obtain a File from the given acess and filter function.
+// @description Will not return an error if no matching file exists.
+// @description Returns an error if the file / doesn't exist.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.touch(get_shell(), "/home/test/myprogram.src")
+// @param {shell|computer|file} access
+// @param {function} filter
+// @return {file|null}
+Filesystem.find_file = function(access, filter)
+    if typeof(@filter) != "function"then
+        return Runtime.throw(Filesystem.InvalidFilterError)
+    end if
+
+    access_type = typeof(access)
+    if ["shell", "computer", "file"].indexOf(access_type) == null then
+        return Runtime.throw(Filesystem.InvalidAccessTypeError)
+    end if
+
+    // If provided access isn't a file, let's start with using a shell or
+    // computer to get the / file.
+    // If the / file cannot be found, we throw that returned error.
+    file = access
+    Runtime.try()
+    if access_type != "file" then file = Filesystem.get_file(access, "/")
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 then error = Filesystem.FileNotFoundError
+        return Runtime.throw(error)
+    end if
+
+    // If the filter returns truthy, we return that file
+    if filter(file) then
+        return file
+    end if
+
+    // If the file isn't a folder, and doesn't already match, we cannot possibly
+    // find a child that does match. Return null now.
+    if not file.is_folder() then return null
+
+    for child in file.get_folders + file.get_files()
+        Runtime.try()
+        hit = Filesystem.find_file(child, @filter)
+        errors = Runtime.catch()
+        if errors.len() then
+            error = Filesystem.UnknownFilesystemError
+            if errors.len() == 1 then error = Filesystem.FileNotFoundError
+            return Runtime.throw(error)
+        end if
+        if hit then return hit
+    end for
+
+    // If we got here, no file was found
+    return null
+end function
+
+// @description Copy a File at the given origin_path to the new_path using access.
+// @description Returns an error if the new_path already exists.
+// @description Returns an error if the origin_path does not exist.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.copy(get_shell(), "/etc/passwd", "/etc/passwd2")
+// @param {shell|computer|file} access
+// @param {string} origin_path
+// @param {string} new_path
+// @return {number|Error}
+Filesystem.copy = function(access, origin_path, new_path)
+    origin = Filesystem.get_file(access, origin_path)
+    if typeof(origin) != "file" then
+        if typeof(origin) isa Error then return Runtime.throw(origin)
+        return Runtime.throw(Filesystem.UnknownFilesystemError)
+    end if
+
+    destination_path = new_path.split("/")[0:-1].join("/")
+    if destination_path.indexOf("/") != 0 then destination_path = "/" + destination_path
+    new_file_name = new_path.split("/")[-1]
+    result = origin.copy(destination_path, new_file_name)
+    if result != true then
+        if typeof(result) == "string" and lower(result).indexOf("permission") != null then
+            return Runtime.throw(Filesystem.InvalidPermissionsError)
+        end if
+        return Runtime.throw(Filesystem.UnknownFilesystemError)
+    end if
+    return true
+end function
+
+// @description Create a File at the given file_path using access.
+// @description Returns an error if the file already exists.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.touch(get_shell(), "/home/test/myprogram.src")
+// @param {shell|computer|file} access
+// @param {string} file_path
+// @return {null|Error}
+Filesystem.touch = function(access, file_path)
+    if typeof(file_path) != "string" or file_path.len() <= 1 or file_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    if file_path.len() > 1 and file_path[-1] == "/" then
+        file_path = file_path[:-1]
+    end if
+
+    // Final check for file_path being just /
+    if file_path == "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    access_type = typeof(access)
+    if ["shell", "computer", "file"].indexOf(access_type) == null then
+        return Runtime.throw(Filesystem.InvalidAccessTypeError)
+    end if
+
+    file = null
+    file_path_parts = file_path.split("/")
+    file_name = file_path_parts[-1]
+    folder_path = "/" + file_path.values()[1:-1 * (file_name.len() + 1)].join("")
+    if file_name.len() >= 128 then
+        return Runtime.throw(Filesystem.FileNameTooLongError)
+    end if
+
+    // Let's handle shell and computer access
+    if ["shell", "computer"].indexOf(access_type) != null then
+        c = access
+        if access_type == "shell" then c = access.host_computer()
+        result = c.touch(folder_path, file_name)
+        if result != 1 then
+            error = Filesystem.UnknownFilesystemError
+            if result == "The file already exists" then
+                error = Filesystem.FileAlreadyExistsError
+            else if lower(result).indexOf("permission") != null then
+                error = Filesystem.InvalidPermissionsError
+            end if
+            return Runtime.throw(error)
+        end if
+        return true // File created successfully
+    end if
+
+    // If we only have file access, we don't have access to the "touch" function
+    // available on computer. This means we need to be clever in how we actually
+    // create any files on the system. One way to do this would be to utilize
+    // the File.copy method. But for this to work, we must first be able to
+    // locate a text file we're permitted to copy. We use a text file because
+    // we cannot set_content on binary, and the source file may have content we
+    // don't want to copy.
+    // The following logic is exclusive to "file" type access. Other access type
+    // would have already returned
+    filter = function(file)
+        is_file = not file.is_folder() and not file.is_binary()
+        ideal_permissions = file.has_permission("r") and file.has_permission("w")
+        return is_file and ideal_permissions
+    end function
+
+    file = Filesystem.find_file(access, @filter)
+    if typeof(file) != "file" then
+        return Runtime.throw(Filesystem.DonorFileNotFoundError)
+    end if
+
+    result = Filesystem.copy(access, file.path(), file_path)
+    if result isa Error then
+        return Runtime.throw(result)
+    end if
+
+    file = Filesystem.get_file(access, file_path)
+    if file isa Error then
+        return Runtime.throw(file)
+    end if
+
+    // Let's empty the file content
+    result = file.set_content("")
+    if not result then
+        Runtime.throw(Filesystem.InvalidPermissionsError)
+    end if
+
+    return true
 end function

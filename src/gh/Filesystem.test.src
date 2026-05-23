@@ -51,6 +51,7 @@ test("Filesystem").expect("get_file can get files with file").is = function(asse
     assert.equals(Filesystem.get_file(f, "/etc/passwd/").path(), "/etc/passwd")
     assert.equals(Filesystem.get_file(f, program_path()).path(), program_path())
     assert.equals(Filesystem.get_file(f, program_path() + "/").path(), program_path())
+    assert.equals(Filesystem.get_file(c.File("/"), program_path()).path(), program_path())
 end function
 
 test("Filesystem").expect("get_file throws Error when access is invalid").is = function(assert)
@@ -120,6 +121,212 @@ test("Filesystem").expect("get_file throws Error when file doesn't exist").is = 
     assert.equals(error, Filesystem.FileNotFoundError)
     assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
     self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("find_file can return expected").is = function(assert)
+    filter = function(file)
+        if file.path() == "/etc/passwd" then return true
+        return false
+    end function
+    file = Filesystem.find_file(get_shell(), @filter)
+    assert.equals(typeof(file), "file")
+    assert.equals(file.path(), "/etc/passwd")
+end function
+
+test("Filesystem").expect("find_file throws Error when filter isn't a function").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.find_file(get_shell())
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), null)
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), "")
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), "/etc/passwd")
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), 1)
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), {})
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilterError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilterError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("find_file throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.find_file(null, @time)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file(true, @time)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file({}, @time)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.find_file([], @time)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("find_file throws Error when / cannot be found somehow").is = function(assert)
+    self = test("Filesystem")
+    mock_access = {}
+    mock_access.classID = "computer"
+    mock_access.File = function(file_path)
+        return null
+    end function
+    filter = function(file)
+        return true
+    end function
+    error = Filesystem.find_file(mock_access, @filter)
+    assert.equals(error, Filesystem.FileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNotFoundError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("touch can create a file").is = function(assert)
+    parent_folder = parent_path(program_path())
+    result = Filesystem.touch(get_shell(), parent_folder + "/testfile1")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfile1")), "file")
+
+    result = Filesystem.touch(get_shell().host_computer(), parent_folder + "/testfile2")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfile2")), "file")
+
+    result = Filesystem.touch(get_shell().host_computer().File("/"), parent_folder + "/testfile3")
+    assert.is_true(result)
+    assert.equals(typeof(Filesystem.get_file(get_shell(), parent_folder + "/testfile3")), "file")
+end function
+
+test("Filesystem").expect("touch throws Error when access is invalid").is = function(assert)
+    self = test("Filesystem")
+    new_file = parent_path(program_path()) + "/test"
+    error = Filesystem.touch(null, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch(true, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch({}, new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch([], new_file)
+    assert.equals(error, Filesystem.InvalidAccessTypeError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidAccessTypeError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("touch throws Error when file already exists").is = function(assert)
+    self = test("Filesystem")
+    new_file = parent_path(program_path()) + "/test"
+    result = Filesystem.touch(get_shell(), new_file)
+    assert.is_true(result)
+
+    error = Filesystem.touch(get_shell(), new_file)
+    assert.equals(error, Filesystem.FileAlreadyExistsError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileAlreadyExistsError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("touch throws Error when path is invalid").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.touch(get_shell(), null)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch(get_shell(), true)
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch(get_shell(), {})
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+
+    error = Filesystem.touch(get_shell(), [])
+    assert.equals(error, Filesystem.InvalidFilePathError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidFilePathError)
+    self.called_runtime_throw_with = null
+end function
+
+test("Filesystem").expect("touch throws Error when file name is too long").is = function(assert)
+    self = test("Filesystem")
+    file_name = parent_path(program_path()) + "/"
+    for i in range(0, 126) // Construct 127-character file name
+        file_name = file_name + "a"
+    end for
+    assert.is_true(Filesystem.touch(get_shell(), file_name))
+
+    // Now make it too long
+    file_name = file_name + "a"
+    error = Filesystem.touch(get_shell(), file_name)
+    assert.equals(error, Filesystem.FileNameTooLongError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.FileNameTooLongError)
+end function
+
+test("Filesystem").expect("touch throws Error when not permitted").is = function(assert)
+    self = test("Filesystem")
+    error = Filesystem.touch(get_shell(), "/root/test")
+    assert.equals(error, Filesystem.InvalidPermissionsError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.InvalidPermissionsError)
+end function
+
+test("Filesystem").expect("touch throws Error when donor file cannot be found").is = function(assert)
+    self = test("Filesystem")
+    // Setup our fake file that cannot traverse the fs to find a valid donor file
+    mock_access = {}
+    mock_access.classID = "file"
+    mock_access.get_files = function()
+        return []
+    end function
+    mock_access.get_folders = function()
+        return []
+    end function
+    mock_access.is_folder = function()
+        return true
+    end function
+    mock_access.has_permission = function(file)
+        return false
+    end function
+
+    error = Filesystem.touch(mock_access, "/test")
+    assert.equals(error, Filesystem.DonorFileNotFoundError)
+    assert.equals(self.called_runtime_throw_with, Filesystem.DonorFileNotFoundError)
 end function
 
 test()

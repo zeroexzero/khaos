@@ -3,7 +3,7 @@
 // @param {any} input
 // @param {any} index
 // @example can_emit = has_index(foobar, "emit")
-// @return {bool}
+// @return {number}
 has_index = function(input, index)
     type = typeof(input)
     // Input wasn't a map or list, it has no indexes.
