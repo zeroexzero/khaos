@@ -218,6 +218,10 @@ end function
 // @param {string} new_path
 // @return {number|Error}
 Filesystem.copy = function(access, origin_path, new_path)
+    if typeof(new_path) != "string" or new_path.len() == 0 or new_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
     origin = Filesystem.get_file(access, origin_path)
     if typeof(origin) != "file" then
         if origin isa Error then return Runtime.throw(origin)
@@ -241,6 +245,53 @@ Filesystem.copy = function(access, origin_path, new_path)
 
     new_file_name = new_path.split("/")[-1]
     result = origin.copy(destination_path, new_file_name)
+    if result != true then
+        if typeof(result) == "string" and lower(result).indexOf("permission") != null then
+            return Runtime.throw(Filesystem.InvalidPermissionsError)
+        end if
+        return Runtime.throw(Filesystem.UnknownFilesystemError)
+    end if
+    return true
+end function
+
+// @description Move a File at the given origin_path to the new_path using access.
+// @description Will replace file at new_path if already exists.
+// @description Returns an error if the new_path isn't valid.
+// @description Returns an error if the origin_path does not exist.
+// @description Returns an error if input params don't match expected.
+// @example Filesystem.move(get_shell(), "/etc/passwd", "/etc/passwd2")
+// @param {shell|computer|file} access
+// @param {string} origin_path
+// @param {string} new_path
+// @return {number|Error}
+Filesystem.move = function(access, origin_path, new_path)
+    if typeof(new_path) != "string" or new_path.len() == 0 or new_path[0] != "/" then
+        return Runtime.throw(Filesystem.InvalidFilePathError)
+    end if
+
+    origin = Filesystem.get_file(access, origin_path)
+    if typeof(origin) != "file" then
+        if origin isa Error then return Runtime.throw(origin)
+        return Runtime.throw(Filesystem.UnknownFilesystemError)
+    end if
+
+    destination_path = new_path.split("/")[0:-1].join("/")
+    if destination_path.indexOf("/") != 0 then destination_path = "/" + destination_path
+
+    // If the destination path doesn't exist, we should throw an Error
+    Runtime.try()
+    destination_file = Filesystem.get_file(access, destination_path)
+    errors = Runtime.catch()
+    if errors.len() then
+        error = Filesystem.UnknownFilesystemError
+        if errors.len() == 1 and errors[0] == Filesystem.InvalidFilePathError then
+            error = errors[0]
+        end if
+        return Runtime.throw(error)
+    end if
+
+    new_file_name = new_path.split("/")[-1]
+    result = origin.move(destination_path, new_file_name)
     if result != true then
         if typeof(result) == "string" and lower(result).indexOf("permission") != null then
             return Runtime.throw(Filesystem.InvalidPermissionsError)
