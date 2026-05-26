@@ -15,11 +15,13 @@ end function
 // @property {string} QUOTE
 // @property {string} PRETTY_PRINT_IDX_LIMIT
 // @property {string} PRETTY_PRINT_DEPTH_LIMIT
+// @property {string} FILE_MAX_CHAR_LIMIT
 // @property {undefined} NULL
 Constants = {
     "EOL": char(10),
     "QUOTE": char(34),
     "PRETTY_PRINT_IDX_LIMIT": 1024,
     "PRETTY_PRINT_DEPTH_LIMIT": 64,
+    "FILE_MAX_CHAR_LIMIT": 160000,
     "NULL": __f_undefined(),
 }

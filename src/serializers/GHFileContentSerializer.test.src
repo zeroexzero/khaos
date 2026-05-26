@@ -128,4 +128,105 @@ test("GHFileContentSerializer").expect("serialize throws when prefix is invalid"
     self.called_runtime_throw_with = null
 end function
 
+test("GHFileContentSerializer").expect("deserialize can save strings across files").is = function(assert)
+    s = get_shell()
+    c = s.host_computer()
+    folder_path = "/home/test/serializer_test"
+    Filesystem.mkdir(s, folder_path)
+    folder = c.File(folder_path)
+
+    // Ensure a donor file exists for file operations
+    c.touch(folder.path(), "donorfile")
+
+    original_limit = Constants.FILE_MAX_CHAR_LIMIT
+    Constants.FILE_MAX_CHAR_LIMIT = "foobar".len() / 2
+
+    assert.is_true(GHFileContentSerializer.deserialize("foobar", folder, "myprefix"))
+    c.File(folder.path() + "/donorfile").delete()
+    assert.equals(Filesystem.get_file(s, folder_path + "/myprefix0").get_content(), "foo")
+    assert.equals(Filesystem.get_file(s, folder_path + "/myprefix1").get_content(), "bar")
+    assert.equals(folder.get_files().len(), 2)
+
+    f0 = Filesystem.get_file(s, folder_path + "/myprefix0")
+    f1 = Filesystem.get_file(s, folder_path + "/myprefix1")
+
+    assert.equals(f0.get_content().len(), Constants.FILE_MAX_CHAR_LIMIT)
+    assert.equals(f0.get_content(), "foo")
+    assert.equals(f1.get_content(), "bar")
+
+    folder.delete()
+    Constants.FILE_MAX_CHAR_LIMIT = original_limit
+end function
+
+test("GHFileContentSerializer").expect("deserialize throws when input is invalid").is = function(assert)
+    self = test("GHFileContentSerializer")
+    test_folder = get_shell().host_computer().File("/")
+    error = GHFileContentSerializer.deserialize(null, "foobar", test_folder)
+    assert.equals(error, GHFileContentSerializer.InvalidInputError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidInputError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize(true, "foobar", test_folder)
+    assert.equals(error, GHFileContentSerializer.InvalidInputError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidInputError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize({}, "foobar", test_folder)
+    assert.equals(error, GHFileContentSerializer.InvalidInputError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidInputError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize([], "foobar", test_folder)
+    assert.equals(error, GHFileContentSerializer.InvalidInputError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidInputError)
+    self.called_runtime_throw_with = null
+end function
+
+test("GHFileContentSerializer").expect("deserialize throws when folder is invalid").is = function(assert)
+    self = test("GHFileContentSerializer")
+    error = GHFileContentSerializer.deserialize("foobar", null, "foobar")
+    assert.equals(error, GHFileContentSerializer.FolderNotAFileError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.FolderNotAFileError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", true, "foobar")
+    assert.equals(error, GHFileContentSerializer.FolderNotAFileError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.FolderNotAFileError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", {}, "foobar")
+    assert.equals(error, GHFileContentSerializer.FolderNotAFileError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.FolderNotAFileError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", [], "foobar")
+    assert.equals(error, GHFileContentSerializer.FolderNotAFileError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.FolderNotAFileError)
+    self.called_runtime_throw_with = null
+end function
+
+test("GHFileContentSerializer").expect("deserialize throws when prefix is invalid").is = function(assert)
+    self = test("GHFileContentSerializer")
+    test_folder = get_shell().host_computer().File("/")
+    error = GHFileContentSerializer.deserialize("foobar", test_folder, null)
+    assert.equals(error, GHFileContentSerializer.InvalidPrefixError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidPrefixError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", test_folder, true)
+    assert.equals(error, GHFileContentSerializer.InvalidPrefixError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidPrefixError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", test_folder, {})
+    assert.equals(error, GHFileContentSerializer.InvalidPrefixError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidPrefixError)
+    self.called_runtime_throw_with = null
+
+    error = GHFileContentSerializer.deserialize("foobar", test_folder, [])
+    assert.equals(error, GHFileContentSerializer.InvalidPrefixError)
+    assert.equals(self.called_runtime_throw_with, GHFileContentSerializer.InvalidPrefixError)
+    self.called_runtime_throw_with = null
+end function
+
 test()

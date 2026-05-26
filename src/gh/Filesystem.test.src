@@ -450,6 +450,15 @@ test("Filesystem").expect("touch can create a file").is = function(assert)
     Filesystem.get_file(get_shell(), parent_folder + "/testfile1").delete()
     Filesystem.get_file(get_shell(), parent_folder + "/testfile2").delete()
     Filesystem.get_file(get_shell(), parent_folder + "/testfile3").delete()
+
+    // Also test that touch can create when the given access is nested inside
+    s = get_shell()
+    c = s.host_computer()
+    c.create_folder(parent_folder, "folder1")
+    c.create_folder(parent_folder + "/folder1", "folder2")
+    fetched = Filesystem.get_file(c.File(parent_folder + "/folder1/folder2"), parent_folder)
+    assert.equals(fetched.path(), parent_folder)
+    c.File(parent_folder + "/folder1").delete()
 end function
 
 test("Filesystem").expect("touch throws Error when access is invalid").is = function(assert)

@@ -1,11 +1,15 @@
 /*
  * Dependencies:
  *   - ../gh/Filesystem.src
+ *   - ../shared/Constants.src
  *   - ../runtime/Runtime.src
  */
 
 // @type GHFileContentSerializer
-GHFileContentSerializer = {}
+// @property {number} MAX_PREFIX_LEN
+GHFileContentSerializer = {
+    "MAX_PREFIX_LEN": 28,
+}
 
 // @type {Error}
 GHFileContentSerializer.FolderNotAFileError = Error.New(
@@ -19,6 +23,20 @@ GHFileContentSerializer.InvalidPrefixError = Error.New(
     false,
     "invalid_prefix",
     "Invalid prefix."
+)
+
+// @type {Error}
+GHFileContentSerializer.InvalidInputError = Error.New(
+    false,
+    "invalid_input",
+    "Input is invalid for GH File serialization/deserialization"
+)
+
+// @type {Error}
+GHFileContentSerializer.UnexpectedError = Error.New(
+    false,
+    "unexpected_error",
+    "Unexpected error"
 )
 
 // @description Given a folder containing files matching the prefix, assemble a string from
@@ -36,6 +54,9 @@ GHFileContentSerializer.serialize = function(folder, prefix)
         return Runtime.throw(Filesystem.FileNotFoundError)
     end if
     if typeof(prefix) != "string" or not prefix.len() then
+        return Runtime.throw(GHFileContentSerializer.InvalidPrefixError)
+    end if
+    if not prefix.matches("[a-zA-Z0-9]") or prefix.len() > GHFileContentSerializer.MAX_PREFIX_LEN then
         return Runtime.throw(GHFileContentSerializer.InvalidPrefixError)
     end if
 
@@ -68,16 +89,83 @@ end function
 // @description Deserialize the given string into GH files. Each file will contain up to
 // @description 160k characters. This will save files to the system.
 // @description Returns an error if parameters don't match expected types or if files cannot
-// @description be written.
+// @description be written. Will delete files in the folder matching the prefix.
 // @example deposit_folder = get_shell().host_computer().File("/home/test")
 // @example file_strs = GHFileContentSerializer.deserialize("foobar", "file", deposit_folder)
 // @param {string} input
-// @param {string} prefix
 // @param {file} folder
-// @return {list<string>}
-GHFileContentSerializer.deserialize = function(input, prefix, folder)
+// @param {string} prefix
+// @return {number|Error}
+GHFileContentSerializer.deserialize = function(input, folder, prefix)
+    if typeof(@input) != "string" or not input.len() then
+        return Runtime.throw(GHFileContentSerializer.InvalidInputError)
+    end if
     if typeof(@folder) != "file" then
         return Runtime.throw(GHFileContentSerializer.FolderNotAFileError)
     end if
+    if not folder.is_folder() then
+        return Runtime.throw(Filesystem.FileNotFoundError)
+    end if
+    if typeof(@prefix) != "string" or not prefix.len()  then
+        return Runtime.throw(GHFileContentSerializer.InvalidPrefixError)
+    end if
+    if not prefix.matches("[a-zA-Z0-9]") or prefix.len() > GHFileContentSerializer.MAX_PREFIX_LEN then
+        return Runtime.throw(GHFileContentSerializer.InvalidPrefixError)
+    end if
 
+    // Clear out any existing prefixed files in set
+    for child in folder.get_files()
+        if child.name().indexOf(prefix) == 0 then
+            Runtime.try()
+            Filesystem.sdelete(folder, child.path())
+            errors = Runtime.catch()
+            if errors.len() then
+                error = errors[0]
+                if errors.len() > 1 then
+                    error = GHFileContentSerializer.UnexpectedError
+                end if
+                return Runtime.throw(error)
+            end if
+        end if
+    end for
+
+    iter = -1
+    while (iter + 1) * Constants.FILE_MAX_CHAR_LIMIT < input.len()
+        iter = iter + 1
+        window_end = iter * Constants.FILE_MAX_CHAR_LIMIT + Constants.FILE_MAX_CHAR_LIMIT
+        if window_end >= input.len() then window_end = input.len()
+
+        // New file's path
+        file_path = folder.path() + "/" + prefix + iter
+
+        // Create the prefixed file we'll set content of
+        Runtime.try()
+        Filesystem.touch(folder, file_path)
+        errors = Runtime.catch()
+        if errors.len() then
+            error = errors[0]
+            if errors.len() > 1 then
+                error = GHFileContentSerializer.UnexpectedError
+            end if
+            return Runtime.throw(error)
+        end if
+
+        // Fetch the file we just made
+        Runtime.try()
+        file = Filesystem.get_file(folder, file_path)
+        errors = Runtime.catch()
+        if errors.len() then
+            error = errors[0]
+            if errors.len() > 1 then
+                error = GHFileContentSerializer.UnexpectedError
+            end if
+            return Runtime.throw(error)
+        end if
+
+        // Set its contents
+        file.set_content(input[iter * Constants.FILE_MAX_CHAR_LIMIT:window_end])
+    end while
+
+    // If we got here, then we haven't had to return any errors.
+    return true
 end function

@@ -103,19 +103,21 @@ Filesystem.get_file = function(access, file_path)
         return file
     end if
 
-    // Traverse parents until at common parent directory
-    common_parent = access
-    while common_parent and file_path.indexOf(common_parent.path()) == null
-        common_parent = common_parent.parent()
+    // Traverse parents until at root
+    root_file = access
+    while true
+        next_parent = root_file.parent()
+        if not next_parent then break
+        root_file = next_parent
     end while
 
     // Somehow found 0 common parents (including /)
-    if typeof(common_parent) != "file" then
+    if typeof(root_file) != "file" then
         return Runtime.throw(Filesystem.FileNotFoundError)
     end if
 
-    // If file_path is / then common_parent must be /, we can just return common_parent
-    if file_path == "/" or file_path == common_parent.path() then return common_parent
+    // If file_path is / then just return root_file
+    if file_path == root_file.path() then return root_file
 
     // Get the folders in the desired path. /home/test => ["home", "test"]
     file_names_in_desired_path = file_path.split("/")[1:]
@@ -128,21 +130,24 @@ Filesystem.get_file = function(access, file_path)
     // Lets traverse child folders/files until we hit the desired one
     i = -1
     f_len = file_names_in_desired_path.len()
-    current_file = common_parent
+    current_file = root_file
     while i < f_len - 1
         i = i + 1
         next_file_name = file_names_in_desired_path[i]
 
         // Looking for files now
         if i == f_len - 1 then
-            for child in current_file.get_files()
+            for child in current_file.get_files() + current_file.get_folders()
                 if child.name() == next_file_name then return child
             end for
 
         // Look for next folder in path
         else
             for child in current_file.get_folders()
-                if child.name() == next_file_name then current_file = child
+                if child.name() == next_file_name then
+                    current_file = child
+                    break
+                end if
             end for
         end if
     end while
